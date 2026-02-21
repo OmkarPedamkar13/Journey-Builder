@@ -1,0 +1,282 @@
+import {
+  Button,
+  Card,
+  Col,
+  Input,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Typography,
+  message,
+} from 'antd';
+import { useMemo, useRef, useState } from 'react';
+import {
+  useCreateTemplateMutation,
+  useGetSchemaFieldsQuery,
+  useGetSchemasQuery,
+  useGetTemplatesQuery,
+} from '../api/journeyApi';
+
+const CHANNELS = ['email', 'whatsapp', 'sms'];
+
+function renderPreview(html, schemaKey, sampleEntity) {
+  if (!html) return '';
+  return String(html).replace(/{{\s*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*}}/g, (_, keySchema, key) => {
+    if (keySchema === schemaKey || keySchema === 'lead') {
+      return sampleEntity?.[key] ?? '';
+    }
+    return '';
+  });
+}
+
+export default function TemplatesPage() {
+  const { data, isFetching } = useGetTemplatesQuery();
+  const { data: schemasData } = useGetSchemasQuery();
+  const [createTemplate, { isLoading }] = useCreateTemplateMutation();
+
+  const [activeChannel, setActiveChannel] = useState('email');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [name, setName] = useState('');
+  const [subject, setSubject] = useState('');
+  const [scopeSchema, setScopeSchema] = useState('lead');
+  const [body, setBody] = useState('');
+
+  const [selectedSchemaForVar, setSelectedSchemaForVar] = useState('lead');
+  const [selectedFieldForVar, setSelectedFieldForVar] = useState('');
+
+  const bodyRef = useRef(null);
+
+  const templates = data?.templates || [];
+  const schemaOptions = (schemasData?.schemas || []).map((s) => ({ label: s.label, value: s.key }));
+
+  const { data: fieldsData } = useGetSchemaFieldsQuery(selectedSchemaForVar, {
+    skip: !selectedSchemaForVar,
+  });
+
+  const fieldOptions = (fieldsData?.fields || []).map((f) => ({
+    label: f.label,
+    value: f.key,
+  }));
+
+  const filteredTemplates = useMemo(
+    () => templates.filter((template) => template.channel === activeChannel),
+    [templates, activeChannel]
+  );
+
+  const sampleEntity = {
+    firstName: 'TestUser',
+    lastName: 'Demo',
+    status: 'CL',
+    personalEmail: 'test@example.com',
+    mobile: '9999999999',
+    createdAt: '2026-02-21',
+  };
+
+  const handleReplaceSelectionWithVariable = () => {
+    if (!selectedSchemaForVar || !selectedFieldForVar) {
+      message.error('Select schema and field first');
+      return;
+    }
+
+    const textarea = bodyRef.current?.resizableTextArea?.textArea;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? start;
+    const variable = `{{${selectedSchemaForVar}.${selectedFieldForVar}}}`;
+
+    const next = `${body.slice(0, start)}${variable}${body.slice(end)}`;
+    setBody(next);
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = start + variable.length;
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  const handleCreateTemplate = async () => {
+    if (!name || !body) {
+      message.error('Template name and body are required');
+      return;
+    }
+
+    try {
+      await createTemplate({
+        name,
+        channel: 'email',
+        type: 'custom',
+        scopeSchema,
+        subject,
+        contentType: 'html',
+        body,
+      }).unwrap();
+
+      message.success('Email template created');
+      setIsModalOpen(false);
+      setName('');
+      setSubject('');
+      setScopeSchema('lead');
+      setBody('');
+      setSelectedSchemaForVar('lead');
+      setSelectedFieldForVar('');
+    } catch (error) {
+      message.error(error?.data?.message || 'Failed to create template');
+    }
+  };
+
+  return (
+    <Row gutter={[16, 16]}>
+      <Col xs={24}>
+        <Card className="journey-panel-card">
+          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <div>
+              <Typography.Title level={4} style={{ margin: 0 }}>Template Studio</Typography.Title>
+              <Typography.Text type="secondary">Create dynamic email templates with live preview</Typography.Text>
+            </div>
+            <Button type="primary" size="large" onClick={() => setIsModalOpen(true)}>
+              New Template
+            </Button>
+          </Space>
+        </Card>
+      </Col>
+
+      <Col xs={24}>
+        <Card title="Template Library">
+          <Tabs
+            activeKey={activeChannel}
+            onChange={setActiveChannel}
+            items={CHANNELS.map((channel) => ({
+              key: channel,
+              label: channel.toUpperCase(),
+              children: (
+                <Table
+                  rowKey="_id"
+                  loading={isFetching}
+                  dataSource={filteredTemplates}
+                  pagination={{ pageSize: 6 }}
+                  columns={[
+                    { title: 'Name', dataIndex: 'name', key: 'name' },
+                    { title: 'Schema', dataIndex: 'scopeSchema', key: 'scopeSchema' },
+                    { title: 'Subject', dataIndex: 'subject', key: 'subject' },
+                    { title: 'Type', dataIndex: 'type', key: 'type' },
+                    {
+                      title: 'Body',
+                      dataIndex: 'body',
+                      key: 'body',
+                      render: (value) => (value || '').replace(/<[^>]*>/g, '').slice(0, 120),
+                    },
+                  ]}
+                />
+              ),
+            }))}
+          />
+        </Card>
+      </Col>
+
+      <Modal
+        title="Create Email Template"
+        rootClassName="cf-template-modal"
+        open={isModalOpen}
+        onOk={handleCreateTemplate}
+        onCancel={() => setIsModalOpen(false)}
+        okText="Save Template"
+        confirmLoading={isLoading}
+        width={1200}
+      >
+        <Row gutter={16}>
+          <Col xs={24} lg={12}>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <div>
+                <Typography.Text type="secondary">Template Name</Typography.Text>
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+
+              <div>
+                <Typography.Text type="secondary">Scope Schema</Typography.Text>
+                <Select
+                  style={{ width: '100%' }}
+                  value={scopeSchema}
+                  options={schemaOptions}
+                  onChange={(value) => {
+                    setScopeSchema(value);
+                    setSelectedSchemaForVar(value);
+                  }}
+                />
+              </div>
+
+              <div>
+                <Typography.Text type="secondary">Subject</Typography.Text>
+                <Input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Welcome {{lead.firstName}}"
+                />
+              </div>
+
+              <Card size="small" title="Dynamic Variable Replace">
+                <Space wrap>
+                  <Select
+                    style={{ width: 150 }}
+                    value={selectedSchemaForVar}
+                    options={schemaOptions}
+                    onChange={(value) => {
+                      setSelectedSchemaForVar(value);
+                      setSelectedFieldForVar('');
+                    }}
+                  />
+                  <Select
+                    style={{ width: 220 }}
+                    value={selectedFieldForVar || undefined}
+                    options={fieldOptions}
+                    placeholder="Select field"
+                    onChange={setSelectedFieldForVar}
+                  />
+                  <Button onClick={handleReplaceSelectionWithVariable}>Replace Selected Text</Button>
+                </Space>
+                <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+                  Highlight text in the editor and replace with a dynamic variable.
+                </Typography.Paragraph>
+              </Card>
+
+              <div>
+                <Typography.Text type="secondary">HTML Body</Typography.Text>
+                <Input.TextArea
+                  ref={bodyRef}
+                  rows={14}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="<p>Hi TestUser,</p><p>Welcome...</p>"
+                />
+              </div>
+            </Space>
+          </Col>
+
+          <Col xs={24} lg={12}>
+            <Card size="small" title="Preview">
+              <Typography.Paragraph style={{ marginBottom: 6 }}>
+                <strong>Subject:</strong> {renderPreview(subject || '', scopeSchema, sampleEntity)}
+              </Typography.Paragraph>
+              <div
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  padding: 12,
+                  minHeight: 320,
+                  background: '#fff',
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: renderPreview(body || '', scopeSchema, sampleEntity),
+                }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </Modal>
+    </Row>
+  );
+}

@@ -1,0 +1,137 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --yellow: #f8c238;
+  --black: #0b0f1a;
+  --bg: #f5f6f8;
+  --border: #e4e6eb;
+  --cf-yellow: var(--yellow);
+  --cf-yellow-soft: #ffe09b;
+  --cf-black: var(--black);
+  --cf-white: #ffffff;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg);
+  color: #0f172a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.journey-panel-card .ant-card-body {
+  background: linear-gradient(180deg, #ffffff 0%, #fffef8 100%);
+}
+
+.journey-canvas-shell {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.journey-palette-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: grab;
+  background: #ffffff;
+  transition: all 120ms ease;
+}
+
+.journey-palette-item:hover {
+  border-color: var(--cf-yellow);
+  box-shadow: 0 6px 16px rgba(248, 194, 56, 0.2);
+  transform: translateY(-1px);
+}
+
+.journey-node-card {
+  min-width: 180px;
+  border: 1px solid color-mix(in srgb, var(--node-accent), #dbeafe 65%);
+  border-left: 6px solid var(--node-accent);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
+  padding: 10px 12px;
+}
+
+.journey-node-card-selected {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--node-accent), #ffffff 25%), 0 12px 24px rgba(2, 132, 199, 0.25);
+}
+
+.journey-node-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.journey-node-type {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.react-flow__node-journeyNode {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.cf-sider {
+  background: var(--cf-black) !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+.cf-sider .ant-menu {
+  background: transparent !important;
+  color: #d4d4d8 !important;
+}
+
+.cf-sider .ant-menu-item-selected {
+  background: var(--cf-yellow) !important;
+  color: #111111 !important;
+  font-weight: 700;
+}
+
+.cf-sider .ant-menu-item:hover {
+  color: var(--cf-yellow) !important;
+}
+
+.cf-header {
+  background: var(--cf-black) !important;
+}
+
+.ant-btn-primary {
+  color: var(--cf-black) !important;
+  font-weight: 700;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+.cf-template-modal .ant-modal-content {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cf-template-modal .ant-modal-header {
+  background: linear-gradient(90deg, #111111 0%, #2a2a2a 100%);
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.cf-template-modal .ant-modal-title {
+  color: var(--cf-yellow);
+}
+
+.ant-btn-color-primary {
+  box-shadow: none !important;
+}

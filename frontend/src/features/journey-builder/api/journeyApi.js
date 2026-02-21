@@ -1,0 +1,65 @@
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+export const journeyApi = createApi({
+  reducerPath: 'journeyApi',
+  baseQuery: fetchBaseQuery({ baseUrl: '/api/journey-builder' }),
+  tagTypes: ['Journey', 'Template', 'Execution'],
+  endpoints: (builder) => ({
+    getJourneys: builder.query({
+      query: () => '/journeys',
+      providesTags: ['Journey'],
+    }),
+    createJourney: builder.mutation({
+      query: (payload) => ({
+        url: '/journeys',
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: ['Journey'],
+    }),
+    publishJourney: builder.mutation({
+      query: (journeyId) => ({
+        url: `/journeys/${journeyId}/publish`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Journey'],
+    }),
+    getTemplates: builder.query({
+      query: () => '/templates',
+      providesTags: ['Template'],
+    }),
+    createTemplate: builder.mutation({
+      query: (payload) => ({
+        url: '/templates',
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: ['Template'],
+    }),
+    getSchemas: builder.query({
+      query: () => '/schemas',
+    }),
+    getSchemaFields: builder.query({
+      query: (schemaKey) => `/schemas/${schemaKey}/fields`,
+    }),
+    triggerJourneyEvent: builder.mutation({
+      query: (payload) => ({
+        url: '/executions/trigger',
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: ['Execution'],
+    }),
+  }),
+});
+
+export const {
+  useGetJourneysQuery,
+  useCreateJourneyMutation,
+  useGetTemplatesQuery,
+  useCreateTemplateMutation,
+  useGetSchemasQuery,
+  useGetSchemaFieldsQuery,
+  useTriggerJourneyEventMutation,
+  usePublishJourneyMutation,
+} = journeyApi;
