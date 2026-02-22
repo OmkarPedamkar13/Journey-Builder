@@ -1,28 +1,85 @@
 const nodemailer = require('nodemailer');
+const { pickFirst } = require('./entityContext.service');
 
 let cachedTransporter;
 
-function renderTemplate(template, entity, schema = 'lead') {
+function getPathValue(obj, path) {
+  if (!obj || !path) return undefined;
+  return String(path)
+    .split('.')
+    .reduce((acc, key) => (acc == null ? undefined : acc[key]), obj);
+}
+
+function toStringValue(value) {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'object') return '';
+  return String(value);
+}
+
+function resolveTokenValue(token, context = {}, fallbackSchema = 'lead') {
+  if (!token) return '';
+
+  if (token.startsWith('entity.')) {
+    const key = token.replace(/^entity\./, '');
+    const entity = context?.primary?.current?.[fallbackSchema] || context?.current || {};
+    return toStringValue(getPathValue(entity, key));
+  }
+
+  const parts = token.split('.');
+  if (parts.length < 2) {
+    const entity = context?.primary?.current?.[fallbackSchema] || context?.current || {};
+    return toStringValue(getPathValue(entity, token));
+  }
+
+  const [schemaKey, ...fieldParts] = parts;
+  const fieldPath = fieldParts.join('.');
+  const entityValue = context?.currentEntities?.[schemaKey];
+  const entity = pickFirst(entityValue);
+
+  return toStringValue(getPathValue(entity, fieldPath));
+}
+
+function renderTemplate(template, context, schema = 'lead') {
   if (!template) return '';
 
   return String(template)
-    .replace(/{{\s*entity\.([a-zA-Z0-9_]+)\s*}}/g, (_, key) => {
-      return entity?.[key] ?? '';
-    })
-    .replace(/{{\s*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*}}/g, (_, schemaName, key) => {
-      if (!schemaName || schemaName === schema || schemaName === 'lead') {
-        return entity?.[key] ?? '';
-      }
-      return '';
+    .replace(/{{\s*([a-zA-Z0-9_.]+)\s*}}/g, (_, token) => {
+      return resolveTokenValue(token, context, schema);
     });
 }
 
-function getEmailTarget(entity) {
-  return entity?.personalEmail || entity?.businessEmail || entity?.email || null;
+function getEmailFromEntity(entity) {
+  const one = pickFirst(entity);
+  return one?.personalEmail || one?.businessEmail || one?.email || one?.email2 || null;
 }
 
-function getPhoneTarget(entity) {
-  return entity?.mobile || entity?.mobile2 || entity?.phone || null;
+function getPhoneFromEntity(entity) {
+  const one = pickFirst(entity);
+  return one?.mobile || one?.mobile2 || one?.mobile3 || one?.phone || one?.phone2 || null;
+}
+
+function getEmailTarget(context, triggerSchema = 'lead') {
+  const entities = context?.currentEntities || {};
+  const priority = [triggerSchema, 'lead', 'customer', 'account'];
+
+  for (const schemaKey of priority) {
+    const value = getEmailFromEntity(entities[schemaKey]);
+    if (value) return value;
+  }
+
+  return null;
+}
+
+function getPhoneTarget(context, triggerSchema = 'lead') {
+  const entities = context?.currentEntities || {};
+  const priority = [triggerSchema, 'lead', 'customer', 'account'];
+
+  for (const schemaKey of priority) {
+    const value = getPhoneFromEntity(entities[schemaKey]);
+    if (value) return value;
+  }
+
+  return null;
 }
 
 function parseBoolean(value, defaultValue = false) {
@@ -63,8 +120,8 @@ function createTransporter() {
   return cachedTransporter;
 }
 
-async function sendEmail({ entity, message, subject, contentType = 'html' }) {
-  const to = getEmailTarget(entity);
+async function sendEmail({ context, triggerSchema, message, subject, contentType = 'html' }) {
+  const to = getEmailTarget(context, triggerSchema);
 
   if (!to) {
     return {
@@ -101,12 +158,12 @@ async function sendEmail({ entity, message, subject, contentType = 'html' }) {
   };
 }
 
-async function sendMessage({ channel, lead, message, subject, contentType }) {
+async function sendMessage({ channel, context, triggerSchema, message, subject, contentType }) {
   if (channel === 'email') {
-    return sendEmail({ entity: lead, message, subject, contentType });
+    return sendEmail({ context, triggerSchema, message, subject, contentType });
   }
 
-  const to = getPhoneTarget(lead);
+  const to = getPhoneTarget(context, triggerSchema);
 
   console.log(`[journey:${channel}] send -> ${to || 'no-target'} | message: ${message}`);
 

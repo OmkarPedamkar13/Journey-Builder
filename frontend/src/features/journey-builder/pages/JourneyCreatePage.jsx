@@ -1,4 +1,5 @@
 import { Button, Card, Col, Input, Row, Space, Typography, message } from 'antd';
+import { useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   ArrowLeftOutlined,
@@ -22,6 +23,7 @@ import {
 import { useCreateJourneyMutation, useUpdateJourneyMutation } from '../api/journeyApi';
 import { validateJourneyGraph } from '../utils/graphValidation';
 import { extractTriggerEvent, extractTriggerSchema } from '../utils/workflow';
+import { buildJourneyPseudoCode } from '../utils/journeySummary';
 
 export default function JourneyCreatePage({ onBack }) {
   const dispatch = useDispatch();
@@ -31,6 +33,7 @@ export default function JourneyCreatePage({ onBack }) {
 
   const [createJourney, { isLoading }] = useCreateJourneyMutation();
   const [updateJourney, { isLoading: isUpdating }] = useUpdateJourneyMutation();
+  const journeySummary = useMemo(() => buildJourneyPseudoCode(nodes, edges), [nodes, edges]);
 
   const handleSaveJourney = async () => {
     const validation = validateJourneyGraph(nodes, edges);
@@ -112,6 +115,15 @@ export default function JourneyCreatePage({ onBack }) {
 
       <Col xs={24} lg={6}>
         <NodeConfigPanel />
+      </Col>
+
+
+      <Col xs={24}>
+        <Card title="Journey Summary (Pseudo Code)" className="journey-panel-card">
+          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+            {journeySummary}
+          </pre>
+        </Card>
       </Col>
     </Row>
   );

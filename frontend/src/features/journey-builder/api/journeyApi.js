@@ -58,6 +58,9 @@ export const journeyApi = createApi({
     getSchemaFields: builder.query({
       query: (schemaKey) => `/schemas/${schemaKey}/fields`,
     }),
+    getSchemaContextFields: builder.query({
+      query: (schemaKey) => `/schemas/${schemaKey}/context-fields`,
+    }),
     triggerJourneyEvent: builder.mutation({
       query: (payload) => ({
         url: '/executions/trigger',
@@ -78,6 +81,7 @@ export const {
   useUpdateTemplateMutation,
   useGetSchemasQuery,
   useGetSchemaFieldsQuery,
+  useGetSchemaContextFieldsQuery,
   useTriggerJourneyEventMutation,
   usePublishJourneyMutation,
 } = journeyApi;

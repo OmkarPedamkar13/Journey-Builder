@@ -152,6 +152,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
+  background: linear-gradient(180deg, #fffef8 0%, #ffffff 20%);
 }
 
 .cf-template-modal .ant-modal-header {
@@ -161,6 +162,35 @@ body {
 
 .cf-template-modal .ant-modal-title {
   color: var(--cf-yellow);
+}
+
+.template-studio-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(120deg, #fff9e5 0%, #ffffff 55%, #f5f6f8 100%);
+}
+
+.template-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  border: 1px solid #efd58a;
+  background: #fff3cb;
+}
+
+.template-pane-card .ant-card-body {
+  background: #fff;
 }
 
 .ant-btn-color-primary {

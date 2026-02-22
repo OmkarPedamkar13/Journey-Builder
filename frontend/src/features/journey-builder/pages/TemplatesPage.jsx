@@ -12,10 +12,18 @@ import {
   Typography,
   message,
 } from 'antd';
-import { useMemo, useRef, useState } from 'react';
-import { CodeOutlined, EditOutlined, EyeOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CodeOutlined,
+  EditOutlined,
+  EyeOutlined,
+  LinkOutlined,
+  PlusOutlined,
+  SaveOutlined,
+} from '@ant-design/icons';
 import {
   useCreateTemplateMutation,
+  useGetSchemaContextFieldsQuery,
   useGetSchemaFieldsQuery,
   useGetSchemasQuery,
   useGetTemplatesQuery,
@@ -24,13 +32,29 @@ import {
 
 const CHANNELS = ['email', 'whatsapp', 'sms'];
 
-function renderPreview(html, schemaKey, sampleEntity) {
+function getPathValue(obj, path) {
+  if (!obj || !path) return '';
+  return String(path)
+    .split('.')
+    .reduce((acc, key) => (acc == null ? '' : acc[key]), obj);
+}
+
+function renderPreview(html, sampleContext, fallbackSchema) {
   if (!html) return '';
-  return String(html).replace(/{{\s*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*}}/g, (_, keySchema, key) => {
-    if (keySchema === schemaKey || keySchema === 'lead') {
-      return sampleEntity?.[key] ?? '';
+  return String(html).replace(/{{\s*([a-zA-Z0-9_.]+)\s*}}/g, (_, token) => {
+    const parts = String(token).split('.');
+    if (parts[0] === 'entity') {
+      const key = parts.slice(1).join('.');
+      const entity = sampleContext?.[fallbackSchema] || {};
+      return String(getPathValue(entity, key) ?? '');
     }
-    return '';
+    if (parts.length >= 2) {
+      const schemaKey = parts[0];
+      const path = parts.slice(1).join('.');
+      return String(getPathValue(sampleContext?.[schemaKey] || {}, path) ?? '');
+    }
+    const entity = sampleContext?.[fallbackSchema] || {};
+    return String(getPathValue(entity, token) ?? '');
   });
 }
 
@@ -58,10 +82,19 @@ export default function TemplatesPage() {
 
   const templates = data?.templates || [];
   const schemaOptions = (schemasData?.schemas || []).map((s) => ({ label: s.label, value: s.key }));
+  const { data: contextFieldsData } = useGetSchemaContextFieldsQuery(scopeSchema || 'lead', {
+    skip: !scopeSchema,
+  });
 
   const { data: fieldsData } = useGetSchemaFieldsQuery(selectedSchemaForVar, {
     skip: !selectedSchemaForVar,
   });
+
+  const contextSchemaOptions = (contextFieldsData?.schemas || []).map((s) => ({
+    label: s.label,
+    value: s.key,
+  }));
+  const variableSchemaOptions = contextSchemaOptions.length ? contextSchemaOptions : schemaOptions;
 
   const fieldOptions = (fieldsData?.fields || []).map((f) => ({
     label: f.label,
@@ -73,13 +106,34 @@ export default function TemplatesPage() {
     [templates, activeChannel]
   );
 
-  const sampleEntity = {
-    firstName: 'TestUser',
-    lastName: 'Demo',
-    status: 'CL',
-    personalEmail: 'test@example.com',
-    mobile: '9999999999',
-    createdAt: '2026-02-21',
+  useEffect(() => {
+    const allowed = new Set(variableSchemaOptions.map((item) => item.value));
+    if (allowed.size && !allowed.has(selectedSchemaForVar)) {
+      const first = variableSchemaOptions[0]?.value || scopeSchema || 'lead';
+      setSelectedSchemaForVar(first);
+      setSelectedFieldForVar('');
+    }
+  }, [variableSchemaOptions, selectedSchemaForVar, scopeSchema]);
+
+  const sampleContext = {
+    lead: {
+      firstName: 'TestUser',
+      lastName: 'Lead',
+      status: 'FL',
+      personalEmail: 'lead@example.com',
+      mobile: '9999999999',
+      createdAt: '2026-02-21',
+    },
+    customer: {
+      firstName: 'TestUser',
+      email: 'customer@example.com',
+      townCity: 'Dubai',
+    },
+    account: {
+      accountNumber: 'AC123456',
+      status: 'ACTIVE',
+      accountType: 'Retail',
+    },
   };
 
   const handleReplaceSelectionWithVariable = () => {
@@ -271,9 +325,28 @@ export default function TemplatesPage() {
         confirmLoading={isLoading || isUpdating}
         width={1200}
       >
+        <div className="template-studio-banner">
+          <div>
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              Dynamic Email Studio
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              Build reusable templates with linked schema placeholders.
+            </Typography.Text>
+          </div>
+          <Space wrap>
+            {variableSchemaOptions.map((schema) => (
+              <span key={schema.value} className="template-chip">
+                <LinkOutlined /> {schema.label}
+              </span>
+            ))}
+          </Space>
+        </div>
+
         <Row gutter={16}>
           <Col xs={24} lg={12}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Card className="template-pane-card" title="Template Setup">
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <Typography.Text type="secondary">Template Name</Typography.Text>
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -281,13 +354,14 @@ export default function TemplatesPage() {
 
               <div>
                 <Typography.Text type="secondary">Scope Schema</Typography.Text>
-                  <Select
-                    style={{ width: '100%' }}
-                    value={scopeSchema || 'lead'}
-                    options={schemaOptions}
-                    onChange={(value) => {
-                      setScopeSchema(value);
-                      setSelectedSchemaForVar(value);
+                <Select
+                  style={{ width: '100%' }}
+                  value={scopeSchema || 'lead'}
+                  options={schemaOptions}
+                  onChange={(value) => {
+                    setScopeSchema(value);
+                    setSelectedSchemaForVar(value);
+                    setSelectedFieldForVar('');
                   }}
                 />
               </div>
@@ -306,7 +380,7 @@ export default function TemplatesPage() {
                   <Select
                     style={{ width: 150 }}
                     value={selectedSchemaForVar}
-                    options={schemaOptions}
+                    options={variableSchemaOptions}
                     onChange={(value) => {
                       setSelectedSchemaForVar(value);
                       setSelectedFieldForVar('');
@@ -326,6 +400,9 @@ export default function TemplatesPage() {
                 <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
                   Highlight text in the editor and replace with a dynamic variable.
                 </Typography.Paragraph>
+                <Typography.Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
+                  Example: <code>{'{{lead.firstName}}'}</code> and <code>{'{{account.accountNumber}}'}</code>
+                </Typography.Paragraph>
               </Card>
 
               <div>
@@ -338,13 +415,14 @@ export default function TemplatesPage() {
                   placeholder="<p>Hi TestUser,</p><p>Welcome...</p>"
                 />
               </div>
-            </Space>
+              </Space>
+            </Card>
           </Col>
 
           <Col xs={24} lg={12}>
-            <Card size="small" title="Preview">
+            <Card className="template-pane-card" size="small" title="Live Preview">
               <Typography.Paragraph style={{ marginBottom: 6 }}>
-                <strong>Subject:</strong> {renderPreview(subject || '', scopeSchema, sampleEntity)}
+                <strong>Subject:</strong> {renderPreview(subject || '', sampleContext, scopeSchema || 'lead')}
               </Typography.Paragraph>
               <div
                 style={{
@@ -355,7 +433,7 @@ export default function TemplatesPage() {
                   background: '#fff',
                 }}
                 dangerouslySetInnerHTML={{
-                  __html: renderPreview(body || '', scopeSchema, sampleEntity),
+                  __html: renderPreview(body || '', sampleContext, scopeSchema || 'lead'),
                 }}
               />
             </Card>

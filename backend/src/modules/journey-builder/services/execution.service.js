@@ -4,6 +4,7 @@ const Template = require('../models/Template');
 const { findRunnableJourneysByTrigger } = require('./journey.service');
 const { renderTemplate, sendMessage } = require('./channel.service');
 const { enqueueExecutionNode } = require('../queue/journeyQueue');
+const { buildJoinedContext, pickFirst } = require('./entityContext.service');
 
 function normalizeNodeType(node) {
   return node?.data?.nodeType || node?.type || '';
@@ -47,11 +48,16 @@ function findNextNodeId(graph, sourceId, branch) {
   return edges[0].target;
 }
 
-function resolveValue(current, fieldPath) {
+function resolveValue(source, fieldPath) {
   if (!fieldPath) return undefined;
   return String(fieldPath)
     .split('.')
-    .reduce((acc, key) => (acc == null ? undefined : acc[key]), current);
+    .reduce((acc, key) => (acc == null ? undefined : acc[key]), source);
+}
+
+function resolveContextValue(entities, schemaKey, fieldPath) {
+  const source = pickFirst(entities?.[schemaKey]);
+  return resolveValue(source || {}, fieldPath);
 }
 
 function isEmpty(value) {
@@ -100,9 +106,10 @@ function evaluateTrigger(config, context) {
 
 function evaluateCondition(config, context) {
   const evaluateRule = (rule) => {
+    const schemaKey = rule?.schema || config?.schema || context.schema;
     const field = rule?.field;
     const type = rule?.ruleType || rule?.conditionType || 'exists';
-    const currentValue = resolveValue(context.current || {}, field);
+    const currentValue = resolveContextValue(context.currentEntities, schemaKey, field);
 
     if (type === 'exists') {
       return !isEmpty(currentValue);
@@ -113,7 +120,7 @@ function evaluateCondition(config, context) {
     }
 
     if (type === 'changed') {
-      const previousValue = resolveValue(context.previous || {}, field);
+      const previousValue = resolveContextValue(context.previousEntities, schemaKey, field);
       const changed = String(previousValue ?? '') !== String(currentValue ?? '');
       if (!changed) return false;
 
@@ -243,6 +250,13 @@ async function processExecutionNode({ executionId, nodeId }) {
     current: execution.contextCurrent || {},
     previous: execution.contextPrevious || {},
   };
+  const joined = await buildJoinedContext({
+    schema: context.schema,
+    current: context.current,
+    previous: context.previous,
+  });
+  context.currentEntities = joined.currentEntities;
+  context.previousEntities = joined.previousEntities;
 
   if (nodeType === 'trigger.event') {
     const pass = evaluateTrigger(config, context);
@@ -303,15 +317,17 @@ async function processExecutionNode({ executionId, nodeId }) {
       }
     }
 
-    const message = renderTemplate(templateBody, context.current || {}, context.schema);
+    const message = renderTemplate(templateBody, context, context.schema);
+    const renderedSubject = renderTemplate(subject || '', context, context.schema);
 
     let sendResult;
     try {
       sendResult = await sendMessage({
         channel,
-        lead: context.current,
+        context,
+        triggerSchema: context.schema,
         message,
-        subject,
+        subject: renderedSubject || subject,
         contentType,
       });
     } catch (error) {
@@ -337,6 +353,7 @@ async function processExecutionNode({ executionId, nodeId }) {
       accepted: Boolean(sendResult?.accepted),
       reason: sendResult?.reason || null,
       templateId: resolvedTemplateId,
+      subject: renderedSubject || subject,
       providerMessageId: sendResult?.providerMessageId || null,
     });
 

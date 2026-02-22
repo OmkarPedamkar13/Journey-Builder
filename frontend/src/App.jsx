@@ -1,13 +1,21 @@
 import { Layout, Menu, Typography } from 'antd';
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import JourneyCreatePage from './features/journey-builder/pages/JourneyCreatePage';
 import JourneyListPage from './features/journey-builder/pages/JourneyListPage';
 import TemplatesPage from './features/journey-builder/pages/TemplatesPage';
+import { createNewJourney } from './features/journey-builder/slice/journeyBuilderSlice';
 
 const { Header, Content, Sider } = Layout;
 
 export default function App() {
+  const dispatch = useDispatch();
   const [activePage, setActivePage] = useState('journeys:list');
+
+  const handleCreateJourney = () => {
+    dispatch(createNewJourney());
+    setActivePage('journeys:create');
+  };
 
   const renderContent = () => {
     if (activePage === 'journeys:create') {
@@ -20,7 +28,7 @@ export default function App() {
 
     return (
       <JourneyListPage
-        onCreateJourney={() => setActivePage('journeys:create')}
+        onCreateJourney={handleCreateJourney}
         onOpenJourney={() => setActivePage('journeys:create')}
       />
     );
@@ -55,7 +63,13 @@ export default function App() {
               children: [{ key: 'templates', label: 'Template Library' }],
             },
           ]}
-          onClick={({ key }) => setActivePage(key)}
+          onClick={({ key }) => {
+            if (key === 'journeys:create') {
+              handleCreateJourney();
+              return;
+            }
+            setActivePage(key);
+          }}
         />
       </Sider>
       <Layout>

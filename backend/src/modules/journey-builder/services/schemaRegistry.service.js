@@ -17,6 +17,45 @@ const schemaRegistry = {
   },
 };
 
+const relationRegistry = {
+  lead: {
+    customer: {
+      cardinality: 'one',
+      localField: 'leadId',
+      foreignField: 'leadId',
+    },
+    account: {
+      cardinality: 'many',
+      localField: 'leadId',
+      foreignField: 'leadId',
+    },
+  },
+  customer: {
+    lead: {
+      cardinality: 'one',
+      localField: 'leadId',
+      foreignField: 'leadId',
+    },
+    account: {
+      cardinality: 'many',
+      localField: '_id',
+      foreignField: 'customerId',
+    },
+  },
+  account: {
+    lead: {
+      cardinality: 'one',
+      localField: 'leadId',
+      foreignField: 'leadId',
+    },
+    customer: {
+      cardinality: 'one',
+      localField: 'customerId',
+      foreignField: '_id',
+    },
+  },
+};
+
 function humanizeKey(key) {
   return String(key)
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -24,6 +63,21 @@ function humanizeKey(key) {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getSchemaModel(schemaKey) {
+  return schemaRegistry[schemaKey]?.model || null;
+}
+
+function getSchemaLabel(schemaKey) {
+  return schemaRegistry[schemaKey]?.label || schemaKey;
+}
+
+function listContextSchemas(schemaKey) {
+  const set = new Set([schemaKey]);
+  const direct = relationRegistry[schemaKey] || {};
+  Object.keys(direct).forEach((key) => set.add(key));
+  return Array.from(set);
 }
 
 function listSchemas() {
@@ -63,7 +117,21 @@ function getSchemaFieldMetadata(schemaKey) {
   };
 }
 
+function getSchemaContextFieldMetadata(schemaKey) {
+  const schemaKeys = listContextSchemas(schemaKey);
+  const schemas = schemaKeys.map((key) => getSchemaFieldMetadata(key));
+  return {
+    key: schemaKey,
+    label: getSchemaLabel(schemaKey),
+    schemas,
+  };
+}
+
 module.exports = {
   listSchemas,
   getSchemaFieldMetadata,
+  getSchemaContextFieldMetadata,
+  getSchemaModel,
+  getSchemaLabel,
+  relationRegistry,
 };

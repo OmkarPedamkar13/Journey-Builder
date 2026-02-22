@@ -18,7 +18,17 @@ async function getSchemaFields(req, res, next) {
   }
 }
 
+async function getSchemaContextFields(req, res, next) {
+  try {
+    const schema = schemaRegistryService.getSchemaContextFieldMetadata(req.params.schemaKey);
+    res.json(schema);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listSchemas,
   getSchemaFields,
+  getSchemaContextFields,
 };
