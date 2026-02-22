@@ -22,4 +22,24 @@ async function createTemplate(payload) {
   return template;
 }
 
-module.exports = { listTemplates, getTemplateById, createTemplate };
+async function updateTemplate(id, payload) {
+  const template = await Template.findById(id);
+  if (!template) {
+    const error = new Error('Template not found');
+    error.status = 404;
+    throw error;
+  }
+
+  if (payload.name !== undefined) template.name = payload.name;
+  if (payload.channel !== undefined) template.channel = payload.channel;
+  if (payload.scopeSchema !== undefined) template.scopeSchema = payload.scopeSchema || 'lead';
+  if (payload.body !== undefined) template.body = payload.body;
+  if (payload.type !== undefined) template.type = payload.type;
+  if (payload.subject !== undefined) template.subject = payload.subject;
+  if (payload.contentType !== undefined) template.contentType = payload.contentType;
+
+  await template.save();
+  return template;
+}
+
+module.exports = { listTemplates, getTemplateById, createTemplate, updateTemplate };

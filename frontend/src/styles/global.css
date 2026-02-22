@@ -16,7 +16,10 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 8% 4%, rgba(248, 194, 56, 0.2), transparent 30%),
+    radial-gradient(circle at 92% 2%, rgba(11, 15, 26, 0.07), transparent 26%),
+    var(--bg);
   color: #0f172a;
 }
 
@@ -26,6 +29,12 @@ body {
 
 .journey-panel-card .ant-card-body {
   background: linear-gradient(180deg, #ffffff 0%, #fffef8 100%);
+}
+
+.ant-card {
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 28px rgba(11, 15, 26, 0.07);
 }
 
 .journey-canvas-shell {
@@ -106,11 +115,33 @@ body {
 
 .cf-header {
   background: var(--cf-black) !important;
+  border-bottom: 2px solid var(--cf-yellow);
 }
 
 .ant-btn-primary {
   color: var(--cf-black) !important;
   font-weight: 700;
+}
+
+.ant-btn {
+  border-radius: 10px !important;
+}
+
+.ant-table-wrapper .ant-table {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ant-tabs-ink-bar {
+  height: 3px !important;
+}
+
+.ant-select-focused .ant-select-selector,
+.ant-input:focus,
+.ant-input-focused {
+  border-color: var(--cf-yellow) !important;
+  box-shadow: 0 0 0 2px rgba(248, 194, 56, 0.2) !important;
 }
 
 .react-flow__attribution {

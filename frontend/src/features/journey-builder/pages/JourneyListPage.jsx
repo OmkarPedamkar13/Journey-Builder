@@ -1,4 +1,5 @@
 import { Button, Col, Row, message } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import EventTriggerForm from '../components/EventTriggerForm';
 import SavedJourneysPanel from '../components/SavedJourneysPanel';
 import { useGetJourneysQuery, usePublishJourneyMutation } from '../api/journeyApi';
@@ -19,7 +20,9 @@ export default function JourneyListPage({ onCreateJourney, onOpenJourney }) {
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24}>
-        <Button type="primary" onClick={onCreateJourney}>Create Journey</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={onCreateJourney}>
+          Create Journey
+        </Button>
       </Col>
 
       <Col xs={24}>

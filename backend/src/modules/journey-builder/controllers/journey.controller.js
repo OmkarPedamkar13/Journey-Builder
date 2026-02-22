@@ -18,6 +18,15 @@ async function create(req, res, next) {
   }
 }
 
+async function update(req, res, next) {
+  try {
+    const journey = await journeyService.updateJourney(req.params.id, req.body);
+    res.json({ journey });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function publish(req, res, next) {
   try {
     const journey = await journeyService.publishJourney(req.params.id);
@@ -27,4 +36,4 @@ async function publish(req, res, next) {
   }
 }
 
-module.exports = { list, create, publish };
+module.exports = { list, create, update, publish };

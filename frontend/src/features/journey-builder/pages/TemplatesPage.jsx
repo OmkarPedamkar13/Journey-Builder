@@ -13,11 +13,13 @@ import {
   message,
 } from 'antd';
 import { useMemo, useRef, useState } from 'react';
+import { CodeOutlined, EditOutlined, EyeOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
 import {
   useCreateTemplateMutation,
   useGetSchemaFieldsQuery,
   useGetSchemasQuery,
   useGetTemplatesQuery,
+  useUpdateTemplateMutation,
 } from '../api/journeyApi';
 
 const CHANNELS = ['email', 'whatsapp', 'sms'];
@@ -36,9 +38,13 @@ export default function TemplatesPage() {
   const { data, isFetching } = useGetTemplatesQuery();
   const { data: schemasData } = useGetSchemasQuery();
   const [createTemplate, { isLoading }] = useCreateTemplateMutation();
+  const [updateTemplate, { isLoading: isUpdating }] = useUpdateTemplateMutation();
 
   const [activeChannel, setActiveChannel] = useState('email');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('create');
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [previewTemplate, setPreviewTemplate] = useState(null);
 
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
@@ -106,18 +112,27 @@ export default function TemplatesPage() {
     }
 
     try {
-      await createTemplate({
+      const payload = {
         name,
-        channel: 'email',
+        channel: activeChannel || 'email',
         type: 'custom',
         scopeSchema,
         subject,
         contentType: 'html',
         body,
-      }).unwrap();
+      };
 
-      message.success('Email template created');
+      if (modalMode === 'edit' && editingTemplateId) {
+        await updateTemplate({ id: editingTemplateId, ...payload }).unwrap();
+        message.success('Template updated');
+      } else {
+        await createTemplate(payload).unwrap();
+        message.success('Template created');
+      }
+
       setIsModalOpen(false);
+      setModalMode('create');
+      setEditingTemplateId(null);
       setName('');
       setSubject('');
       setScopeSchema('lead');
@@ -138,7 +153,22 @@ export default function TemplatesPage() {
               <Typography.Title level={4} style={{ margin: 0 }}>Template Studio</Typography.Title>
               <Typography.Text type="secondary">Create dynamic email templates with live preview</Typography.Text>
             </div>
-            <Button type="primary" size="large" onClick={() => setIsModalOpen(true)}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setModalMode('create');
+                setEditingTemplateId(null);
+                setName('');
+                setSubject('');
+                setScopeSchema('lead');
+                setBody('');
+                setSelectedSchemaForVar('lead');
+                setSelectedFieldForVar('');
+                setIsModalOpen(true);
+              }}
+            >
               New Template
             </Button>
           </Space>
@@ -170,6 +200,34 @@ export default function TemplatesPage() {
                       key: 'body',
                       render: (value) => (value || '').replace(/<[^>]*>/g, '').slice(0, 120),
                     },
+                    {
+                      title: 'Action',
+                      key: 'action',
+                      render: (_, record) => (
+                        <Space>
+                          <Button size="small" icon={<EyeOutlined />} onClick={() => setPreviewTemplate(record)}>
+                            View
+                          </Button>
+                          <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => {
+                              setModalMode('edit');
+                              setEditingTemplateId(record._id);
+                              setName(record.name || '');
+                              setSubject(record.subject || '');
+                              setScopeSchema(record.scopeSchema || 'lead');
+                              setBody(record.body || '');
+                              setSelectedSchemaForVar(record.scopeSchema || 'lead');
+                              setSelectedFieldForVar('');
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        </Space>
+                      ),
+                    },
                   ]}
                 />
               ),
@@ -179,13 +237,38 @@ export default function TemplatesPage() {
       </Col>
 
       <Modal
-        title="Create Email Template"
+        title={previewTemplate ? `Template Preview: ${previewTemplate.name}` : 'Template Preview'}
+        open={Boolean(previewTemplate)}
+        footer={null}
+        onCancel={() => setPreviewTemplate(null)}
+        width={900}
+      >
+        <Typography.Paragraph style={{ marginBottom: 8 }}>
+          <strong>Channel:</strong> {previewTemplate?.channel || '-'}
+        </Typography.Paragraph>
+        <Typography.Paragraph style={{ marginBottom: 8 }}>
+          <strong>Subject:</strong> {previewTemplate?.subject || '-'}
+        </Typography.Paragraph>
+        <div
+          style={{
+            border: '1px solid #e4e6eb',
+            borderRadius: 10,
+            padding: 12,
+            minHeight: 280,
+            background: '#fff',
+          }}
+          dangerouslySetInnerHTML={{ __html: previewTemplate?.body || '' }}
+        />
+      </Modal>
+
+      <Modal
+        title={modalMode === 'edit' ? 'Edit Template' : 'Create Template'}
         rootClassName="cf-template-modal"
         open={isModalOpen}
         onOk={handleCreateTemplate}
         onCancel={() => setIsModalOpen(false)}
-        okText="Save Template"
-        confirmLoading={isLoading}
+        okText={modalMode === 'edit' ? 'Update Template' : 'Save Template'}
+        confirmLoading={isLoading || isUpdating}
         width={1200}
       >
         <Row gutter={16}>
@@ -198,13 +281,13 @@ export default function TemplatesPage() {
 
               <div>
                 <Typography.Text type="secondary">Scope Schema</Typography.Text>
-                <Select
-                  style={{ width: '100%' }}
-                  value={scopeSchema}
-                  options={schemaOptions}
-                  onChange={(value) => {
-                    setScopeSchema(value);
-                    setSelectedSchemaForVar(value);
+                  <Select
+                    style={{ width: '100%' }}
+                    value={scopeSchema || 'lead'}
+                    options={schemaOptions}
+                    onChange={(value) => {
+                      setScopeSchema(value);
+                      setSelectedSchemaForVar(value);
                   }}
                 />
               </div>
@@ -236,7 +319,9 @@ export default function TemplatesPage() {
                     placeholder="Select field"
                     onChange={setSelectedFieldForVar}
                   />
-                  <Button onClick={handleReplaceSelectionWithVariable}>Replace Selected Text</Button>
+                  <Button icon={<CodeOutlined />} onClick={handleReplaceSelectionWithVariable}>
+                    Replace Selected Text
+                  </Button>
                 </Space>
                 <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
                   Highlight text in the editor and replace with a dynamic variable.
@@ -274,6 +359,16 @@ export default function TemplatesPage() {
                 }}
               />
             </Card>
+            <div style={{ marginTop: 10 }}>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                onClick={handleCreateTemplate}
+                loading={isLoading || isUpdating}
+              >
+                {modalMode === 'edit' ? 'Update Template' : 'Save Template'}
+              </Button>
+            </div>
           </Col>
         </Row>
       </Modal>

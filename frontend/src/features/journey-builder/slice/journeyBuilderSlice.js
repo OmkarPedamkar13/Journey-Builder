@@ -5,6 +5,7 @@ import { createDefaultJourneyGraph } from '../utils/workflow';
 const initialGraph = createDefaultJourneyGraph();
 
 const initialState = {
+  currentJourneyId: null,
   name: 'Lead Journey',
   nodes: initialGraph.nodes,
   edges: initialGraph.edges,
@@ -16,6 +17,9 @@ const journeyBuilderSlice = createSlice({
   name: 'journeyBuilder',
   initialState,
   reducers: {
+    setCurrentJourneyId(state, action) {
+      state.currentJourneyId = action.payload || null;
+    },
     setJourneyName(state, action) {
       state.name = action.payload;
     },
@@ -106,6 +110,7 @@ const journeyBuilderSlice = createSlice({
     },
     loadJourneyGraph(state, action) {
       const journey = action.payload;
+      state.currentJourneyId = journey?._id || null;
       state.name = journey.name || 'Lead Journey';
       state.nodes = journey?.graph?.nodes || [];
       state.edges = journey?.graph?.edges || [];
@@ -114,6 +119,7 @@ const journeyBuilderSlice = createSlice({
     },
     createNewJourney(state) {
       const next = createDefaultJourneyGraph();
+      state.currentJourneyId = null;
       state.name = 'Untitled Journey';
       state.nodes = next.nodes;
       state.edges = next.edges;
@@ -124,6 +130,7 @@ const journeyBuilderSlice = createSlice({
 });
 
 export const {
+  setCurrentJourneyId,
   setJourneyName,
   onNodesChange,
   onEdgesChange,

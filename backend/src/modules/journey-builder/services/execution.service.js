@@ -99,33 +99,56 @@ function evaluateTrigger(config, context) {
 }
 
 function evaluateCondition(config, context) {
-  const field = config?.field;
-  const type = config?.conditionType || 'exists';
-  const currentValue = resolveValue(context.current || {}, field);
+  const evaluateRule = (rule) => {
+    const field = rule?.field;
+    const type = rule?.ruleType || rule?.conditionType || 'exists';
+    const currentValue = resolveValue(context.current || {}, field);
 
-  if (type === 'exists') {
-    return !isEmpty(currentValue);
+    if (type === 'exists') {
+      return !isEmpty(currentValue);
+    }
+
+    if (type === 'equals') {
+      return String(currentValue ?? '') === String(rule?.value ?? '');
+    }
+
+    if (type === 'changed') {
+      const previousValue = resolveValue(context.previous || {}, field);
+      const changed = String(previousValue ?? '') !== String(currentValue ?? '');
+      if (!changed) return false;
+
+      const hasFrom = rule?.from !== undefined && rule?.from !== '';
+      const hasTo = rule?.to !== undefined && rule?.to !== '';
+
+      if (hasFrom && String(previousValue ?? '') !== String(rule?.from)) return false;
+      if (hasTo && String(currentValue ?? '') !== String(rule?.to)) return false;
+
+      return true;
+    }
+
+    return false;
+  };
+
+  const evaluateGroup = (group) => {
+    const items = Array.isArray(group?.items) ? group.items : [];
+    if (!items.length) return false;
+
+    const op = String(group?.operator || 'and').toLowerCase();
+    const results = items.map((item) => {
+      if (!item) return false;
+      if (item.kind === 'group') return evaluateGroup(item);
+      return evaluateRule(item);
+    });
+
+    if (op === 'or') return results.some(Boolean);
+    return results.every(Boolean);
+  };
+
+  if (config?.conditionGroup && Array.isArray(config.conditionGroup.items)) {
+    return evaluateGroup(config.conditionGroup);
   }
 
-  if (type === 'equals') {
-    return String(currentValue ?? '') === String(config?.value ?? '');
-  }
-
-  if (type === 'changed') {
-    const previousValue = resolveValue(context.previous || {}, field);
-    const changed = String(previousValue ?? '') !== String(currentValue ?? '');
-    if (!changed) return false;
-
-    const hasFrom = config?.from !== undefined && config?.from !== '';
-    const hasTo = config?.to !== undefined && config?.to !== '';
-
-    if (hasFrom && String(previousValue ?? '') !== String(config?.from)) return false;
-    if (hasTo && String(currentValue ?? '') !== String(config?.to)) return false;
-
-    return true;
-  }
-
-  return false;
+  return evaluateRule(config || {});
 }
 
 function getEntityId(current) {

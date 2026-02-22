@@ -1,5 +1,13 @@
 import { Button, Card, Col, Input, Row, Space, Typography, message } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
+import {
+  ArrowLeftOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusCircleOutlined,
+  ReloadOutlined,
+  SaveOutlined,
+} from '@ant-design/icons';
 import FlowCanvas from '../components/FlowCanvas';
 import NodeConfigPanel from '../components/NodeConfigPanel';
 import NodePalette from '../components/NodePalette';
@@ -8,17 +16,21 @@ import {
   removeSelectedEdge,
   removeSelectedNode,
   resetJourneyGraph,
+  setCurrentJourneyId,
   setJourneyName,
 } from '../slice/journeyBuilderSlice';
-import { useCreateJourneyMutation } from '../api/journeyApi';
+import { useCreateJourneyMutation, useUpdateJourneyMutation } from '../api/journeyApi';
 import { validateJourneyGraph } from '../utils/graphValidation';
 import { extractTriggerEvent, extractTriggerSchema } from '../utils/workflow';
 
 export default function JourneyCreatePage({ onBack }) {
   const dispatch = useDispatch();
-  const { name, nodes, edges, selectedNodeId, selectedEdgeId } = useSelector((state) => state.journeyBuilder);
+  const { currentJourneyId, name, nodes, edges, selectedNodeId, selectedEdgeId } = useSelector(
+    (state) => state.journeyBuilder
+  );
 
   const [createJourney, { isLoading }] = useCreateJourneyMutation();
+  const [updateJourney, { isLoading: isUpdating }] = useUpdateJourneyMutation();
 
   const handleSaveJourney = async () => {
     const validation = validateJourneyGraph(nodes, edges);
@@ -31,15 +43,18 @@ export default function JourneyCreatePage({ onBack }) {
       const graph = { nodes, edges, settings: {} };
       const triggerEvent = extractTriggerEvent(nodes);
       const triggerSchema = extractTriggerSchema(nodes);
+      const payload = { name, triggerSchema, triggerEvent, graph };
 
-      await createJourney({
-        name,
-        triggerSchema,
-        triggerEvent,
-        graph,
-      }).unwrap();
+      if (currentJourneyId) {
+        await updateJourney({ id: currentJourneyId, ...payload }).unwrap();
+        message.success('Journey updated');
+      } else {
+        const response = await createJourney(payload).unwrap();
+        dispatch(setCurrentJourneyId(response?.journey?._id || null));
+        message.success('Journey saved as draft');
+      }
 
-      message.success('Journey saved as draft');
+      onBack?.();
     } catch (error) {
       message.error(error?.data?.message || 'Failed to save journey');
     }
@@ -50,24 +65,35 @@ export default function JourneyCreatePage({ onBack }) {
       <Col xs={24}>
         <Card>
           <Space wrap>
-            <Button onClick={onBack}>Back to Journey List</Button>
+            <Button icon={<ArrowLeftOutlined />} onClick={onBack}>
+              Back to Journey List
+            </Button>
             <Input
               style={{ width: 300 }}
               value={name}
               onChange={(e) => dispatch(setJourneyName(e.target.value))}
               placeholder="Journey name"
             />
-            <Button type="primary" loading={isLoading} onClick={handleSaveJourney}>
+            <Button
+              type="primary"
+              icon={currentJourneyId ? <EditOutlined /> : <SaveOutlined />}
+              loading={isLoading || isUpdating}
+              onClick={handleSaveJourney}
+            >
               Save Draft
             </Button>
-            <Button disabled={!selectedNodeId} onClick={() => dispatch(removeSelectedNode())}>
+            <Button icon={<DeleteOutlined />} disabled={!selectedNodeId} onClick={() => dispatch(removeSelectedNode())}>
               Delete Node
             </Button>
-            <Button disabled={!selectedEdgeId} onClick={() => dispatch(removeSelectedEdge())}>
+            <Button icon={<DeleteOutlined />} disabled={!selectedEdgeId} onClick={() => dispatch(removeSelectedEdge())}>
               Delete Edge
             </Button>
-            <Button onClick={() => dispatch(resetJourneyGraph())}>Reset Graph</Button>
-            <Button onClick={() => dispatch(createNewJourney())}>New Journey</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => dispatch(resetJourneyGraph())}>
+              Reset Graph
+            </Button>
+            <Button icon={<PlusCircleOutlined />} onClick={() => dispatch(createNewJourney())}>
+              New Journey
+            </Button>
           </Space>
           <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
             Drag nodes from palette, connect them, then configure selected node in the right panel.

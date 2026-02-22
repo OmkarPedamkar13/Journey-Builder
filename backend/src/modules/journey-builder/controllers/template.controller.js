@@ -18,4 +18,13 @@ async function create(req, res, next) {
   }
 }
 
-module.exports = { list, create };
+async function update(req, res, next) {
+  try {
+    const template = await templateService.updateTemplate(req.params.id, req.body);
+    res.json({ template });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { list, create, update };

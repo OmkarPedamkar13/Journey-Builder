@@ -26,6 +26,33 @@ async function createJourney(payload) {
   return journey;
 }
 
+async function updateJourney(id, payload) {
+  const validation = validateJourneyPayload(payload);
+
+  if (!validation.valid) {
+    const error = new Error('Invalid journey graph');
+    error.status = 400;
+    error.details = validation.errors;
+    throw error;
+  }
+
+  const journey = await Journey.findById(id);
+  if (!journey) {
+    const error = new Error('Journey not found');
+    error.status = 404;
+    throw error;
+  }
+
+  journey.name = payload.name || journey.name || 'Untitled Journey';
+  journey.triggerSchema = validation.triggerSchema;
+  journey.triggerEvent = validation.triggerEvent;
+  journey.graph = validation.graph;
+  journey.status = 'draft';
+  await journey.save();
+
+  return journey;
+}
+
 async function publishJourney(id) {
   const journey = await Journey.findById(id);
   if (!journey) {
@@ -67,6 +94,7 @@ async function findRunnableJourneysByTrigger(triggerSchema, triggerEvent, option
 module.exports = {
   listJourneys,
   createJourney,
+  updateJourney,
   publishJourney,
   findPublishedJourneysByTrigger,
   findRunnableJourneysByTrigger,

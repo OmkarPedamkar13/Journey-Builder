@@ -1,5 +1,6 @@
 import { Button, Card, Space, Table, Tag } from 'antd';
 import { useDispatch } from 'react-redux';
+import { CloudUploadOutlined, EditOutlined } from '@ant-design/icons';
 import { loadJourneyGraph, setJourneyName } from '../slice/journeyBuilderSlice';
 
 export default function SavedJourneysPanel({
@@ -46,16 +47,17 @@ export default function SavedJourneysPanel({
         <Space>
           <Button
             size="small"
+            icon={<EditOutlined />}
             onClick={() => {
               dispatch(setJourneyName(record.name || 'Journey'));
               dispatch(loadJourneyGraph(record));
               if (onLoadJourney) onLoadJourney(record);
             }}
           >
-            Load
+            Load & Edit
           </Button>
           {record.status !== 'published' ? (
-            <Button size="small" type="primary" onClick={() => onPublish(record._id)}>
+            <Button size="small" type="primary" icon={<CloudUploadOutlined />} onClick={() => onPublish(record._id)}>
               Publish
             </Button>
           ) : null}

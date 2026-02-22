@@ -1,4 +1,5 @@
 import { Button, Card, Form, Input, Select, Space, Typography, message } from 'antd';
+import { PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 import { useGetSchemasQuery, useTriggerJourneyEventMutation } from '../api/journeyApi';
 
@@ -93,10 +94,12 @@ export default function EventTriggerForm() {
 
         <Form.Item>
           <Space>
-            <Button type="primary" htmlType="submit" loading={isLoading}>
+            <Button type="primary" icon={<PlayCircleOutlined />} htmlType="submit" loading={isLoading}>
               Trigger Event
             </Button>
-            <Button onClick={() => form.resetFields()}>Reset</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => form.resetFields()}>
+              Reset
+            </Button>
           </Space>
         </Form.Item>
       </Form>

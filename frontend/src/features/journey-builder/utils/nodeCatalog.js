@@ -31,11 +31,22 @@ export const NODE_LIBRARY = [
     label: 'Condition',
     defaultConfig: {
       schema: 'lead',
-      conditionType: 'exists',
-      field: 'personalEmail',
-      value: 'CL',
-      from: 'CL',
-      to: 'FL',
+      conditionGroup: {
+        id: 'group_root',
+        kind: 'group',
+        operator: 'and',
+        items: [
+          {
+            id: 'rule_exists_email',
+            kind: 'rule',
+            ruleType: 'exists',
+            field: 'personalEmail',
+            value: '',
+            from: '',
+            to: '',
+          },
+        ],
+      },
     },
   },
   {

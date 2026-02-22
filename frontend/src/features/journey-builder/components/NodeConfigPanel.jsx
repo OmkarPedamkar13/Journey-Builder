@@ -1,4 +1,9 @@
-import { Card, Input, Select, Space, Typography } from 'antd';
+import { Button, Card, Input, Select, Space, Typography } from 'antd';
+import {
+  DeleteOutlined,
+  PlusCircleOutlined,
+  NodeIndexOutlined,
+} from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   useGetSchemaFieldsQuery,
@@ -25,6 +30,69 @@ const waitUnitOptions = [
 
 function stripHtml(html) {
   return String(html || '').replace(/<[^>]*>/g, ' ');
+}
+
+function uid(prefix) {
+  return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+}
+
+function createConditionRule(initial = {}) {
+  return {
+    id: uid('rule'),
+    kind: 'rule',
+    ruleType: initial.ruleType || initial.conditionType || 'exists',
+    field: initial.field || '',
+    value: initial.value || '',
+    from: initial.from || '',
+    to: initial.to || '',
+  };
+}
+
+function createConditionGroup(operator = 'and', items = []) {
+  return {
+    id: uid('group'),
+    kind: 'group',
+    operator,
+    items,
+  };
+}
+
+function normalizeConditionGroup(config) {
+  if (config?.conditionGroup && Array.isArray(config.conditionGroup.items)) {
+    return config.conditionGroup;
+  }
+
+  return createConditionGroup('and', [createConditionRule(config || {})]);
+}
+
+function updateGroupById(group, groupId, updater) {
+  if (!group) return group;
+  if (group.id === groupId) return updater(group);
+
+  const nextItems = (group.items || []).map((item) => {
+    if (item?.kind === 'group') return updateGroupById(item, groupId, updater);
+    return item;
+  });
+
+  return { ...group, items: nextItems };
+}
+
+function updateRuleById(group, ruleId, updater) {
+  if (!group) return group;
+  const nextItems = (group.items || []).map((item) => {
+    if (item?.kind === 'group') return updateRuleById(item, ruleId, updater);
+    if (item?.id === ruleId) return updater(item);
+    return item;
+  });
+  return { ...group, items: nextItems };
+}
+
+function removeItemById(group, itemId) {
+  if (!group) return group;
+  const nextItems = (group.items || [])
+    .filter((item) => item?.id !== itemId)
+    .map((item) => (item?.kind === 'group' ? removeItemById(item, itemId) : item));
+  return { ...group, items: nextItems };
 }
 
 export default function NodeConfigPanel() {
@@ -54,6 +122,7 @@ export default function NodeConfigPanel() {
     label: field.label,
     value: field.key,
   }));
+  const conditionGroup = normalizeConditionGroup(config);
 
   if (!node) {
     return <Card title="Node Config">Select a node</Card>;
@@ -68,6 +137,169 @@ export default function NodeConfigPanel() {
   const renderValueInput = (value, onChange, placeholder) => {
     return <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />;
   };
+
+  const patchConditionGroup = (nextGroup) => {
+    patch({ conditionGroup: nextGroup });
+  };
+
+  const addRuleToGroup = (groupId) => {
+    const next = updateGroupById(conditionGroup, groupId, (group) => ({
+      ...group,
+      items: [...(group.items || []), createConditionRule()],
+    }));
+    patchConditionGroup(next);
+  };
+
+  const addNestedGroup = (groupId) => {
+    const next = updateGroupById(conditionGroup, groupId, (group) => ({
+      ...group,
+      items: [...(group.items || []), createConditionGroup('and', [createConditionRule()])],
+    }));
+    patchConditionGroup(next);
+  };
+
+  const renderConditionRule = (rule) => (
+    <Card key={rule.id} size="small" style={{ border: '1px solid #e4e6eb' }}>
+      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Space wrap>
+          <Select
+            style={{ width: 140 }}
+            value={rule.ruleType || 'exists'}
+            options={[
+              { label: 'Exists', value: 'exists' },
+              { label: 'Field Equals', value: 'equals' },
+              { label: 'Field Changed', value: 'changed' },
+            ]}
+            onChange={(value) => {
+              const next = updateRuleById(conditionGroup, rule.id, (item) => ({
+                ...item,
+                ruleType: value,
+              }));
+              patchConditionGroup(next);
+            }}
+          />
+          <Select
+            style={{ width: 190 }}
+            value={rule.field || undefined}
+            options={fieldOptions}
+            placeholder="Select field"
+            onChange={(value) => {
+              const next = updateRuleById(conditionGroup, rule.id, (item) => ({
+                ...item,
+                field: value,
+              }));
+              patchConditionGroup(next);
+            }}
+          />
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => {
+              const next = removeItemById(conditionGroup, rule.id);
+              patchConditionGroup(next);
+            }}
+          >
+            Remove
+          </Button>
+        </Space>
+
+        {(rule.ruleType || 'exists') === 'equals' ? (
+          renderValueInput(
+            rule.value || '',
+            (value) => {
+              const next = updateRuleById(conditionGroup, rule.id, (item) => ({ ...item, value }));
+              patchConditionGroup(next);
+            },
+            'Expected value'
+          )
+        ) : null}
+
+        {(rule.ruleType || 'exists') === 'changed' ? (
+          <Space wrap style={{ width: '100%' }}>
+            {renderValueInput(
+              rule.from || '',
+              (value) => {
+                const next = updateRuleById(conditionGroup, rule.id, (item) => ({ ...item, from: value }));
+                patchConditionGroup(next);
+              },
+              'From value (optional)'
+            )}
+            {renderValueInput(
+              rule.to || '',
+              (value) => {
+                const next = updateRuleById(conditionGroup, rule.id, (item) => ({ ...item, to: value }));
+                patchConditionGroup(next);
+              },
+              'To value (optional)'
+            )}
+          </Space>
+        ) : null}
+      </Space>
+    </Card>
+  );
+
+  const renderConditionGroup = (group, isRoot = false) => (
+    <Card
+      key={group.id}
+      size="small"
+      style={{
+        border: '1px solid #e4e6eb',
+        background: isRoot ? '#fffdf5' : '#ffffff',
+      }}
+      title={isRoot ? 'Condition Group' : 'Nested Group'}
+      extra={
+        isRoot ? null : (
+          <Button
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => {
+              const next = removeItemById(conditionGroup, group.id);
+              patchConditionGroup(next);
+            }}
+          >
+            Remove Group
+          </Button>
+        )
+      }
+    >
+      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <div>
+          <Typography.Text type="secondary">Operator</Typography.Text>
+          <Select
+            style={{ width: '100%' }}
+            value={group.operator || 'and'}
+            options={[
+              { label: 'AND ($and)', value: 'and' },
+              { label: 'OR ($or)', value: 'or' },
+            ]}
+            onChange={(value) => {
+              const next = updateGroupById(conditionGroup, group.id, (item) => ({
+                ...item,
+                operator: value,
+              }));
+              patchConditionGroup(next);
+            }}
+          />
+        </div>
+
+        {(group.items || []).map((item) =>
+          item?.kind === 'group'
+            ? renderConditionGroup(item, false)
+            : renderConditionRule(item)
+        )}
+
+        <Space wrap>
+          <Button size="small" icon={<PlusCircleOutlined />} onClick={() => addRuleToGroup(group.id)}>
+            Add Condition
+          </Button>
+          <Button size="small" icon={<NodeIndexOutlined />} onClick={() => addNestedGroup(group.id)}>
+            Add Group
+          </Button>
+        </Space>
+      </Space>
+    </Card>
+  );
 
   return (
     <Card title="Node Config" bordered className="journey-panel-card">
@@ -204,53 +436,11 @@ export default function NodeConfigPanel() {
                 style={{ width: '100%' }}
                 value={schemaKey}
                 options={schemaOptions}
-                onChange={(value) => patch({ schema: value, field: undefined })}
+                onChange={(value) => patch({ schema: value })}
               />
             </div>
 
-            <div>
-              <Typography.Text type="secondary">Condition Type</Typography.Text>
-              <Select
-                style={{ width: '100%' }}
-                value={config.conditionType || 'exists'}
-                options={[
-                  { label: 'Exists', value: 'exists' },
-                  { label: 'Field Equals', value: 'equals' },
-                  { label: 'Field Changed', value: 'changed' },
-                ]}
-                onChange={(value) => patch({ conditionType: value })}
-              />
-            </div>
-
-            <div>
-              <Typography.Text type="secondary">Field</Typography.Text>
-              <Select
-                style={{ width: '100%' }}
-                value={config.field}
-                options={fieldOptions}
-                onChange={(value) => patch({ field: value })}
-              />
-            </div>
-          </>
-        ) : null}
-
-        {nodeType === NODE_TYPES.CONDITION_CHECK && (config.conditionType || 'exists') === 'equals' ? (
-          <div>
-            <Typography.Text type="secondary">Value</Typography.Text>
-            {renderValueInput(config.value || '', (value) => patch({ value }), 'Expected value')}
-          </div>
-        ) : null}
-
-        {nodeType === NODE_TYPES.CONDITION_CHECK && (config.conditionType || 'exists') === 'changed' ? (
-          <>
-            <div>
-              <Typography.Text type="secondary">From</Typography.Text>
-              {renderValueInput(config.from || '', (value) => patch({ from: value }), 'From value')}
-            </div>
-            <div>
-              <Typography.Text type="secondary">To</Typography.Text>
-              {renderValueInput(config.to || '', (value) => patch({ to: value }), 'To value')}
-            </div>
+            {renderConditionGroup(conditionGroup, true)}
           </>
         ) : null}
 
@@ -306,6 +496,20 @@ export default function NodeConfigPanel() {
                         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
                           {stripHtml(selectedTemplate.body).slice(0, 220)}
                         </Typography.Paragraph>
+                        <div
+                          style={{
+                            marginTop: 8,
+                            maxHeight: 180,
+                            overflow: 'auto',
+                            border: '1px solid #e4e6eb',
+                            borderRadius: 8,
+                            padding: 8,
+                            background: '#fff',
+                          }}
+                          dangerouslySetInnerHTML={{
+                            __html: selectedTemplate.body || '',
+                          }}
+                        />
                       </Card>
                     ) : null}
                   </>

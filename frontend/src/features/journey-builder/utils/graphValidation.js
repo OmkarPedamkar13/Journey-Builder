@@ -2,6 +2,15 @@ function isEndNode(nodeType) {
   return nodeType === 'end.discard' || nodeType === 'end.success';
 }
 
+function hasAnyConditionRule(group) {
+  if (!group || !Array.isArray(group.items)) return false;
+  return group.items.some((item) => {
+    if (!item) return false;
+    if (item.kind === 'group') return hasAnyConditionRule(item);
+    return Boolean(item.field);
+  });
+}
+
 export function validateJourneyGraph(nodes, edges) {
   const errors = [];
 
@@ -30,6 +39,14 @@ export function validateJourneyGraph(nodes, edges) {
 
     if (String(nodeType).startsWith('condition.') && outgoing.length < 2) {
       errors.push(`Condition node ${nodeType} should have Yes and No branches.`);
+    }
+
+    if (nodeType === 'condition.check') {
+      const group = node?.config?.conditionGroup;
+      const legacyField = node?.config?.field;
+      if (!hasAnyConditionRule(group) && !legacyField) {
+        errors.push('Condition node must include at least one configured condition field.');
+      }
     }
   });
 

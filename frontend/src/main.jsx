@@ -23,9 +23,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             colorError: '#ff4d4f',
             colorTextBase: '#0b0f1a',
             colorBgBase: '#f5f6f8',
+            colorBgContainer: '#ffffff',
+            colorTextSecondary: '#4b5563',
             colorBorder: '#e4e6eb',
             colorSplit: '#e4e6eb',
             borderRadius: 10,
+            boxShadowSecondary: '0 10px 30px rgba(11, 15, 26, 0.08)',
           },
           components: {
             Button: {
@@ -36,6 +39,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               defaultActiveBorderColor: '#eab42d',
               colorPrimaryHover: '#ffd45f',
               colorPrimaryActive: '#eab42d',
+              controlHeight: 38,
             },
             Menu: {
               itemSelectedColor: '#0b0f1a',
@@ -48,6 +52,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             },
             Select: {
               optionSelectedBg: '#fff7dd',
+            },
+            Card: {
+              headerBg: '#ffffff',
             },
           },
         }}
