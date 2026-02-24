@@ -32,6 +32,13 @@ export const journeyApi = createApi({
       }),
       invalidatesTags: ['Journey'],
     }),
+    deleteJourney: builder.mutation({
+      query: (journeyId) => ({
+        url: `/journeys/${journeyId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Journey'],
+    }),
     getTemplates: builder.query({
       query: () => '/templates',
       providesTags: ['Template'],
@@ -49,6 +56,13 @@ export const journeyApi = createApi({
         url: `/templates/${id}`,
         method: 'PUT',
         body: payload,
+      }),
+      invalidatesTags: ['Template'],
+    }),
+    deleteTemplate: builder.mutation({
+      query: (id) => ({
+        url: `/templates/${id}`,
+        method: 'DELETE',
       }),
       invalidatesTags: ['Template'],
     }),
@@ -76,9 +90,11 @@ export const {
   useGetJourneysQuery,
   useCreateJourneyMutation,
   useUpdateJourneyMutation,
+  useDeleteJourneyMutation,
   useGetTemplatesQuery,
   useCreateTemplateMutation,
   useUpdateTemplateMutation,
+  useDeleteTemplateMutation,
   useGetSchemasQuery,
   useGetSchemaFieldsQuery,
   useGetSchemaContextFieldsQuery,

@@ -42,4 +42,16 @@ async function updateTemplate(id, payload) {
   return template;
 }
 
-module.exports = { listTemplates, getTemplateById, createTemplate, updateTemplate };
+async function deleteTemplate(id) {
+  const template = await Template.findById(id);
+  if (!template) {
+    const error = new Error('Template not found');
+    error.status = 404;
+    throw error;
+  }
+
+  await Template.deleteOne({ _id: template._id });
+  return { deleted: true, id };
+}
+
+module.exports = { listTemplates, getTemplateById, createTemplate, updateTemplate, deleteTemplate };

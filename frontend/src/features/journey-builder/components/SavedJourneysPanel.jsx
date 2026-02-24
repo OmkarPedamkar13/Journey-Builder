@@ -1,11 +1,12 @@
-import { Button, Card, Space, Table, Tag } from 'antd';
+import { Button, Card, Popconfirm, Space, Table, Tag } from 'antd';
 import { useDispatch } from 'react-redux';
-import { CloudUploadOutlined, EditOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { loadJourneyGraph, setJourneyName } from '../slice/journeyBuilderSlice';
 
 export default function SavedJourneysPanel({
   journeys = [],
   onPublish,
+  onDelete,
   onLoadJourney,
   loading = false,
 }) {
@@ -61,6 +62,17 @@ export default function SavedJourneysPanel({
               Publish
             </Button>
           ) : null}
+          <Popconfirm
+            title="Delete this journey?"
+            description="This action cannot be undone."
+            okText="Delete"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => onDelete?.(record._id)}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />}>
+              Delete
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },

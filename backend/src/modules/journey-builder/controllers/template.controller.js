@@ -27,4 +27,13 @@ async function update(req, res, next) {
   }
 }
 
-module.exports = { list, create, update };
+async function remove(req, res, next) {
+  try {
+    const result = await templateService.deleteTemplate(req.params.id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { list, create, update, remove };

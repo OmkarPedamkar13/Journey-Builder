@@ -10,9 +10,9 @@ const eventOptions = [
 
 const defaultCurrentPayload = {
   leadId: `lead_${Date.now()}`,
-  firstName: 'Test',
+  firstName: 'Omkar',
   status: 'CL',
-  personalEmail: 'test@example.com',
+  personalEmail: 'omkarpedamkar@centuryiq.in',
 };
 
 const defaultPreviousPayload = {

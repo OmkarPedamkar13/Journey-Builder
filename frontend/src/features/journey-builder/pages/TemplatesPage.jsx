@@ -4,6 +4,7 @@ import {
   Col,
   Input,
   Modal,
+  Popconfirm,
   Row,
   Select,
   Space,
@@ -20,6 +21,7 @@ import {
   LinkOutlined,
   PlusOutlined,
   SaveOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import {
   useCreateTemplateMutation,
@@ -27,6 +29,7 @@ import {
   useGetSchemaFieldsQuery,
   useGetSchemasQuery,
   useGetTemplatesQuery,
+  useDeleteTemplateMutation,
   useUpdateTemplateMutation,
 } from '../api/journeyApi';
 
@@ -63,6 +66,7 @@ export default function TemplatesPage() {
   const { data: schemasData } = useGetSchemasQuery();
   const [createTemplate, { isLoading }] = useCreateTemplateMutation();
   const [updateTemplate, { isLoading: isUpdating }] = useUpdateTemplateMutation();
+  const [deleteTemplate, { isLoading: isDeletingTemplate }] = useDeleteTemplateMutation();
 
   const [activeChannel, setActiveChannel] = useState('email');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -198,6 +202,23 @@ export default function TemplatesPage() {
     }
   };
 
+  const handleDeleteTemplate = async (id) => {
+    try {
+      await deleteTemplate(id).unwrap();
+      message.success('Template deleted');
+      if (editingTemplateId === id) {
+        setIsModalOpen(false);
+        setModalMode('create');
+        setEditingTemplateId(null);
+      }
+      if (previewTemplate?._id === id) {
+        setPreviewTemplate(null);
+      }
+    } catch (error) {
+      message.error(error?.data?.message || 'Failed to delete template');
+    }
+  };
+
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24}>
@@ -279,6 +300,17 @@ export default function TemplatesPage() {
                           >
                             Edit
                           </Button>
+                          <Popconfirm
+                            title="Delete this template?"
+                            description="This action cannot be undone."
+                            okText="Delete"
+                            okButtonProps={{ danger: true, loading: isDeletingTemplate }}
+                            onConfirm={() => handleDeleteTemplate(record._id)}
+                          >
+                            <Button size="small" danger icon={<DeleteOutlined />}>
+                              Delete
+                            </Button>
+                          </Popconfirm>
                         </Space>
                       ),
                     },

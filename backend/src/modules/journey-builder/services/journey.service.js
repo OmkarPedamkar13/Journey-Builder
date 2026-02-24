@@ -1,4 +1,5 @@
 const Journey = require('../models/Journey');
+const JourneyExecution = require('../models/JourneyExecution');
 const { validateJourneyPayload } = require('../validators/journey.validator');
 
 async function listJourneys() {
@@ -69,6 +70,20 @@ async function publishJourney(id) {
   return journey;
 }
 
+async function deleteJourney(id) {
+  const journey = await Journey.findById(id);
+  if (!journey) {
+    const error = new Error('Journey not found');
+    error.status = 404;
+    throw error;
+  }
+
+  await JourneyExecution.deleteMany({ journeyId: journey._id });
+  await Journey.deleteOne({ _id: journey._id });
+
+  return { deleted: true, id };
+}
+
 async function findPublishedJourneysByTrigger(triggerSchema, triggerEvent) {
   return Journey.find({
     status: 'published',
@@ -96,6 +111,7 @@ module.exports = {
   createJourney,
   updateJourney,
   publishJourney,
+  deleteJourney,
   findPublishedJourneysByTrigger,
   findRunnableJourneysByTrigger,
 };

@@ -36,4 +36,13 @@ async function publish(req, res, next) {
   }
 }
 
-module.exports = { list, create, update, publish };
+async function remove(req, res, next) {
+  try {
+    const result = await journeyService.deleteJourney(req.params.id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { list, create, update, publish, remove };
