@@ -39,7 +39,7 @@ export default function App() {
       <Sider width={260} theme="dark" className="cf-sider">
         <div style={{ padding: 20 }}>
           <Typography.Title level={4} style={{ margin: 0, color: 'var(--cf-yellow)' }}>
-            Journey Suite
+            Journey Builder
           </Typography.Title>
         </div>
         <Menu

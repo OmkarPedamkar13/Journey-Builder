@@ -95,6 +95,26 @@ const journeyBuilderSlice = createSlice({
       state.selectedNodeId = state.nodes[0]?.id || null;
       state.selectedEdgeId = null;
     },
+    duplicateNode(state, action) {
+      const sourceNodeId = action.payload || state.selectedNodeId;
+      if (!sourceNodeId) return;
+
+      const sourceNode = state.nodes.find((node) => node.id === sourceNodeId);
+      if (!sourceNode) return;
+
+      const duplicate = {
+        ...cloneValue(sourceNode),
+        id: makeNodeId(sourceNode?.data?.nodeType),
+        position: {
+          x: (sourceNode?.position?.x || 0) + 40,
+          y: (sourceNode?.position?.y || 0) + 40,
+        },
+      };
+
+      state.nodes.push(duplicate);
+      state.selectedNodeId = duplicate.id;
+      state.selectedEdgeId = null;
+    },
     removeSelectedEdge(state) {
       const edgeId = state.selectedEdgeId;
       if (!edgeId) return;

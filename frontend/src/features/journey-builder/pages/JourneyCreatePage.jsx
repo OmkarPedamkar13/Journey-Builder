@@ -85,12 +85,12 @@ export default function JourneyCreatePage({ onBack }) {
             >
               Save Draft
             </Button>
-            <Button icon={<DeleteOutlined />} disabled={!selectedNodeId} onClick={() => dispatch(removeSelectedNode())}>
+            {/* <Button icon={<DeleteOutlined />} disabled={!selectedNodeId} onClick={() => dispatch(removeSelectedNode())}>
               Delete Node
-            </Button>
-            <Button icon={<DeleteOutlined />} disabled={!selectedEdgeId} onClick={() => dispatch(removeSelectedEdge())}>
+            </Button> */}
+            {/* <Button icon={<DeleteOutlined />} disabled={!selectedEdgeId} onClick={() => dispatch(removeSelectedEdge())}>
               Delete Edge
-            </Button>
+            </Button> */}
             <Button icon={<ReloadOutlined />} onClick={() => dispatch(resetJourneyGraph())}>
               Reset Graph
             </Button>
