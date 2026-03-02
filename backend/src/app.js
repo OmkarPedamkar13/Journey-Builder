@@ -1,31 +1,36 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const journeyBuilderRouter = require('./modules/journey-builder/routes');
-const { notFound, errorHandler } = require('./middlewares/error.middleware');
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const journeyBuilderRouter = require("./modules/journey-builder/routes");
+const { notFound, errorHandler } = require("./middlewares/error.middleware");
 
 const app = express();
 
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "https://uprouat.century.ae",
+      "https://upro2.century.ae",
+    ],
     credentials: true,
-  })
+  }),
 );
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
-  })
+  }),
 );
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 app.use(express.json());
 
-app.get('/api/health', (_req, res) => {
+app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-app.use('/api/journey-builder', journeyBuilderRouter);
+app.use("/api/journey-builder", journeyBuilderRouter);
 
 app.use(notFound);
 app.use(errorHandler);

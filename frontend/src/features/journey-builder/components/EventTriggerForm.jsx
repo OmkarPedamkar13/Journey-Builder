@@ -12,7 +12,7 @@ const defaultCurrentPayload = {
   leadId: `lead_${Date.now()}`,
   firstName: 'Omkar',
   status: 'CL',
-  personalEmail: 'omkarpedamkar@centuryiq.in',
+  personalEmail: 'omkarpedamkar2@gmail.com',
 };
 
 const defaultPreviousPayload = {
