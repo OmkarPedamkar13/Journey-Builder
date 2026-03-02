@@ -25,6 +25,22 @@ const NODE_COLORS = {
   "end.success": "#22c55e",
   "end.discard": "#ef4444",
 };
+const NODE_PASTEL_BACKGROUNDS = {
+  "trigger.event": "#effbff",
+  "wait.timer": "#f3f4ff",
+  "condition.check": "#fff8ec",
+  "action.send.message": "#ecfdf6",
+  "end.success": "#eefdf3",
+  "end.discard": "#fff1f2",
+};
+const NODE_PASTEL_BORDERS = {
+  "trigger.event": "#bfefff",
+  "wait.timer": "#cfd3ff",
+  "condition.check": "#ffe5b8",
+  "action.send.message": "#bdeedb",
+  "end.success": "#c8f2d5",
+  "end.discard": "#ffcdd2",
+};
 
 export default function JourneyFlowNode(props) {
   const { data, selected } = props;
@@ -38,14 +54,8 @@ export default function JourneyFlowNode(props) {
   const Icon = NODE_ICONS[businessType];
   // ✅ Choose color
   const color = NODE_COLORS[businessType] || "#64748b";
-
-  // ✅ Debug (will work now)
-  console.log("NODE DEBUG:", {
-    rfType: props.type, // should be "journeyNode"
-    businessType,
-    meta,
-    data,
-  });
+  const bgColor = NODE_PASTEL_BACKGROUNDS[businessType] || "#f8fafc";
+  const borderColor = NODE_PASTEL_BORDERS[businessType] || "#e2e8f0";
 
   return (
     <div
@@ -53,7 +63,11 @@ export default function JourneyFlowNode(props) {
         "journey-node-card",
         selected && "journey-node-card-selected",
       )}
-      style={{ "--node-accent": color }}
+      style={{
+        "--node-accent": color,
+        "--node-bg": bgColor,
+        "--node-border": borderColor,
+      }}
     >
       <Handle
         type="target"

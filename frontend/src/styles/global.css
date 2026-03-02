@@ -61,23 +61,28 @@ body {
 }
 
 .journey-node-card {
-      border-radius: 8px;
-    background-color: rgb(255, 253, 249);
-    color: rgb(32, 21, 21);
-    transition: background-color 300ms ease-in-out, border-color 300ms ease-in-out, box-shadow 300ms ease-in-out, opacity 300ms ease-in-out;
-    width: 200px;
-    box-shadow: rgba(0, 0, 0, 0.1) 0px 5px 10px 0px;
-    box-sizing: border-box;
-    position: relative;
-    z-index: 0;
-    border-color: rgb(32, 21, 21);
-    border-style: dotted;
-    border-width: 2px;
-    padding: 10px;
+  min-width: 200px;
+  border-radius: 10px;
+  background: var(--node-bg, #ffffff);
+  border: 1px solid var(--node-border, #e2e8f0);
+  border-left: 4px solid var(--node-accent, #64748b);
+  color: #201515;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+  box-shadow: rgba(0, 0, 0, 0.08) 0 4px 10px 0;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 0;
+  padding: 10px;
 }
 
 .journey-node-card-selected {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--node-accent), #ffffff 25%), 0 12px 24px rgba(2, 132, 199, 0.25);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--node-accent), #ffffff 25%),
+    0 10px 22px rgba(2, 132, 199, 0.22);
 }
 
 .journey-node-title {

@@ -47,6 +47,9 @@ function formatConditionRule(rule = {}, defaultSchema = 'lead') {
 
   if (type === 'exists') return `${schema}.${field} exists`;
   if (type === 'equals') return `${schema}.${field} equals "${rule.value || ''}"`;
+  if (type === 'contains') return `${schema}.${field} contains "${rule.value || ''}"`;
+  if (type === 'not_equals') return `${schema}.${field} not equals "${rule.value || ''}"`;
+  if (type === 'not_contains') return `${schema}.${field} not contains "${rule.value || ''}"`;
   if (type === 'changed') {
     const from = rule.from ? ` from "${rule.from}"` : '';
     const to = rule.to ? ` to "${rule.to}"` : '';
@@ -150,4 +153,3 @@ export function buildJourneyPseudoCode(nodes = [], edges = []) {
   walk(trigger.id, nodeMap, edges, lines, 0, new Set());
   return lines.join('\n');
 }
-

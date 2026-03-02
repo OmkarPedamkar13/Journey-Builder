@@ -168,6 +168,9 @@ export default function NodeConfigPanel() {
             options={[
               { label: 'Exists', value: 'exists' },
               { label: 'Field Equals', value: 'equals' },
+              { label: 'Field Contains', value: 'contains' },
+              { label: 'Field Not Equal To', value: 'not_equals' },
+              { label: 'Field Not Contain', value: 'not_contains' },
               { label: 'Field Changed', value: 'changed' },
             ]}
             onChange={(value) => {
@@ -203,14 +206,14 @@ export default function NodeConfigPanel() {
           </Button>
         </Space>
 
-        {(rule.ruleType || 'exists') === 'equals' ? (
+        {['equals', 'contains', 'not_equals', 'not_contains'].includes(rule.ruleType || 'exists') ? (
           renderValueInput(
             rule.value || '',
             (value) => {
               const next = updateRuleById(conditionGroup, rule.id, (item) => ({ ...item, value }));
               patchConditionGroup(next);
             },
-            'Expected value'
+            (rule.ruleType || 'exists') === 'not_contains' ? 'Value to exclude' : 'Expected value'
           )
         ) : null}
 

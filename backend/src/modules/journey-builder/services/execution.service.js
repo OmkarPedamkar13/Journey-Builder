@@ -119,6 +119,22 @@ function evaluateCondition(config, context) {
       return String(currentValue ?? '') === String(rule?.value ?? '');
     }
 
+    if (type === 'not_equals') {
+      return String(currentValue ?? '') !== String(rule?.value ?? '');
+    }
+
+    if (type === 'contains') {
+      const source = String(currentValue ?? '').toLowerCase();
+      const needle = String(rule?.value ?? '').toLowerCase();
+      return source.includes(needle);
+    }
+
+    if (type === 'not_contains') {
+      const source = String(currentValue ?? '').toLowerCase();
+      const needle = String(rule?.value ?? '').toLowerCase();
+      return !source.includes(needle);
+    }
+
     if (type === 'changed') {
       const previousValue = resolveContextValue(context.previousEntities, schemaKey, field);
       const changed = String(previousValue ?? '') !== String(currentValue ?? '');
