@@ -61,7 +61,11 @@ function renderPreview(html, sampleContext, fallbackSchema) {
   });
 }
 
-export default function TemplatesPage() {
+export default function TemplatesPage({
+  editTemplateId = null,
+  onOpenTemplateEdit,
+  onCloseTemplateEdit,
+}) {
   const { data, isFetching } = useGetTemplatesQuery();
   const { data: schemasData } = useGetSchemasQuery();
   const [createTemplate, { isLoading }] = useCreateTemplateMutation();
@@ -118,6 +122,22 @@ export default function TemplatesPage() {
       setSelectedFieldForVar('');
     }
   }, [variableSchemaOptions, selectedSchemaForVar, scopeSchema]);
+
+  useEffect(() => {
+    if (!editTemplateId) return;
+    const record = templates.find((item) => String(item._id) === String(editTemplateId));
+    if (!record) return;
+
+    setModalMode('edit');
+    setEditingTemplateId(record._id);
+    setName(record.name || '');
+    setSubject(record.subject || '');
+    setScopeSchema(record.scopeSchema || 'lead');
+    setBody(record.body || '');
+    setSelectedSchemaForVar(record.scopeSchema || 'lead');
+    setSelectedFieldForVar('');
+    setIsModalOpen(true);
+  }, [editTemplateId, templates]);
 
   const sampleContext = {
     lead: {
@@ -197,6 +217,7 @@ export default function TemplatesPage() {
       setBody('');
       setSelectedSchemaForVar('lead');
       setSelectedFieldForVar('');
+      if (onCloseTemplateEdit) onCloseTemplateEdit();
     } catch (error) {
       message.error(error?.data?.message || 'Failed to create template');
     }
@@ -210,6 +231,7 @@ export default function TemplatesPage() {
         setIsModalOpen(false);
         setModalMode('create');
         setEditingTemplateId(null);
+        if (onCloseTemplateEdit) onCloseTemplateEdit();
       }
       if (previewTemplate?._id === id) {
         setPreviewTemplate(null);
@@ -287,15 +309,19 @@ export default function TemplatesPage() {
                             size="small"
                             icon={<EditOutlined />}
                             onClick={() => {
-                              setModalMode('edit');
-                              setEditingTemplateId(record._id);
-                              setName(record.name || '');
-                              setSubject(record.subject || '');
-                              setScopeSchema(record.scopeSchema || 'lead');
-                              setBody(record.body || '');
-                              setSelectedSchemaForVar(record.scopeSchema || 'lead');
-                              setSelectedFieldForVar('');
-                              setIsModalOpen(true);
+                              if (onOpenTemplateEdit) {
+                                onOpenTemplateEdit(record._id);
+                              } else {
+                                setModalMode('edit');
+                                setEditingTemplateId(record._id);
+                                setName(record.name || '');
+                                setSubject(record.subject || '');
+                                setScopeSchema(record.scopeSchema || 'lead');
+                                setBody(record.body || '');
+                                setSelectedSchemaForVar(record.scopeSchema || 'lead');
+                                setSelectedFieldForVar('');
+                                setIsModalOpen(true);
+                              }
                             }}
                           >
                             Edit
@@ -352,7 +378,10 @@ export default function TemplatesPage() {
         rootClassName="cf-template-modal"
         open={isModalOpen}
         onOk={handleCreateTemplate}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          setIsModalOpen(false);
+          if (onCloseTemplateEdit) onCloseTemplateEdit();
+        }}
         okText={modalMode === 'edit' ? 'Update Template' : 'Save Template'}
         confirmLoading={isLoading || isUpdating}
         width={1200}

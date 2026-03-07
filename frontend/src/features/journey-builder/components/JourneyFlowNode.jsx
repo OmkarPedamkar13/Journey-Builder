@@ -5,6 +5,7 @@ import {
   ThunderboltOutlined,
   ClockCircleOutlined,
   BranchesOutlined,
+  DeploymentUnitOutlined,
   MailOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -13,6 +14,7 @@ const NODE_ICONS = {
   "trigger.event": <ThunderboltOutlined />,
   "wait.timer": <ClockCircleOutlined />,
   "condition.check": <BranchesOutlined />,
+  "split.router": <DeploymentUnitOutlined />,
   "action.send.message": <MailOutlined />,
   "end.success": <CheckCircleOutlined />,
   "end.discard": <CloseCircleOutlined />,
@@ -21,7 +23,8 @@ const NODE_COLORS = {
   "trigger.event": "#0ea5e9",
   "wait.timer": "#6366f1",
   "condition.check": "#f59e0b",
-  "action.send.message": "#10b981",
+  "split.router": "#8b5cf6",
+  "action.send.message": "#ec4899",
   "end.success": "#22c55e",
   "end.discard": "#ef4444",
 };
@@ -29,7 +32,8 @@ const NODE_PASTEL_BACKGROUNDS = {
   "trigger.event": "#effbff",
   "wait.timer": "#f3f4ff",
   "condition.check": "#fff8ec",
-  "action.send.message": "#ecfdf6",
+  "split.router": "#f6f1ff",
+  "action.send.message": "#fdf2f8",
   "end.success": "#eefdf3",
   "end.discard": "#fff1f2",
 };
@@ -37,7 +41,8 @@ const NODE_PASTEL_BORDERS = {
   "trigger.event": "#bfefff",
   "wait.timer": "#cfd3ff",
   "condition.check": "#ffe5b8",
-  "action.send.message": "#bdeedb",
+  "split.router": "#decdf8",
+  "action.send.message": "#fbcfe8",
   "end.success": "#c8f2d5",
   "end.discard": "#ffcdd2",
 };
@@ -56,12 +61,23 @@ export default function JourneyFlowNode(props) {
   const color = NODE_COLORS[businessType] || "#64748b";
   const bgColor = NODE_PASTEL_BACKGROUNDS[businessType] || "#f8fafc";
   const borderColor = NODE_PASTEL_BORDERS[businessType] || "#e2e8f0";
+  const executionState = data?.executionState || null;
+  const executionIsStart = Boolean(data?.executionIsStart);
+  const executionStepIndex = Number.isFinite(data?.executionStepIndex)
+    ? Number(data.executionStepIndex)
+    : null;
 
   return (
     <div
       className={clsx(
         "journey-node-card",
         selected && "journey-node-card-selected",
+        executionIsStart && "journey-node-card-start",
+        executionState === "path" && "journey-node-card-path",
+        executionState === "visited" && "journey-node-card-visited",
+        executionState === "success" && "journey-node-card-success",
+        executionState === "failed" && "journey-node-card-failed",
+        executionState === "idle" && "journey-node-card-idle",
       )}
       style={{
         "--node-accent": color,
@@ -87,6 +103,10 @@ export default function JourneyFlowNode(props) {
       <div className="journey-node-type">
         {data?.description || meta?.description || "—"}
       </div>
+
+      {executionStepIndex !== null ? (
+        <div className="journey-node-step-badge">#{executionStepIndex + 1}</div>
+      ) : null}
 
       <Handle
         type="source"

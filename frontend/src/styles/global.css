@@ -64,8 +64,8 @@ body {
   min-width: 200px;
   border-radius: 10px;
   background: var(--node-bg, #ffffff);
-  border: 1px solid var(--node-border, #e2e8f0);
-  border-left: 4px solid var(--node-accent, #64748b);
+  border: 2px dotted var(--node-border, #d8dee8);
+  border-left: 4px solid var(--node-accent, #c4cfdf);
   color: #201515;
   transition:
     background-color 220ms ease,
@@ -83,6 +83,55 @@ body {
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--node-accent), #ffffff 25%),
     0 10px 22px rgba(2, 132, 199, 0.22);
+  border-left-color: var(--node-accent, #3b82f6);
+}
+
+.journey-node-card-start {
+  border-color: #a5b4fc !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2), 0 10px 20px rgba(99, 102, 241, 0.15);
+}
+
+.journey-node-card-path {
+  border-color: #bfdbfe !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2), 0 8px 18px rgba(59, 130, 246, 0.14);
+}
+
+.journey-node-card-visited {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.28), 0 8px 18px rgba(56, 189, 248, 0.18);
+}
+
+.journey-node-card-success {
+  border-color: #86efac !important;
+  border-left-color: #22c55e !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25), 0 10px 20px rgba(34, 197, 94, 0.2);
+}
+
+.journey-node-card-failed {
+  border-color: #fca5a5 !important;
+  border-left-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25), 0 10px 20px rgba(239, 68, 68, 0.2);
+}
+
+.journey-node-card-idle {
+  opacity: 0.4;
+}
+
+.journey-node-step-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #374151;
 }
 
 .journey-node-title {

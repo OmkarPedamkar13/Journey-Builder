@@ -40,6 +40,23 @@ export function validateJourneyGraph(nodes, edges) {
     if (String(nodeType).startsWith('condition.') && outgoing.length < 2) {
       errors.push(`Condition node ${nodeType} should have Yes and No branches.`);
     }
+    if (nodeType === 'split.router') {
+      const branches = Array.isArray(node?.config?.branches) ? node.config.branches : [];
+      if (!branches.length) {
+        errors.push('Split node must have at least one branch configured.');
+      }
+      if (outgoing.length < 1) {
+        errors.push('Split node should have at least one connected branch.');
+      }
+      if (branches.length && outgoing.length > branches.length) {
+        errors.push('Split node has more edges than configured branches.');
+      }
+      branches.forEach((branch, index) => {
+        if (!branch?.field) {
+          errors.push(`Split branch ${index + 1} must include a field.`);
+        }
+      });
+    }
 
     if (nodeType === 'condition.check') {
       const group = node?.config?.conditionGroup;

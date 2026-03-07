@@ -94,6 +94,10 @@ function formatAction(config = {}) {
   return `SEND ${channel.toUpperCase()} message`;
 }
 
+function formatSplitBranchCondition(branch = {}, defaultSchema = 'lead') {
+  return formatConditionRule(branch, branch.schema || defaultSchema);
+}
+
 function formatNode(node) {
   const nodeType = getNodeType(node);
   const config = node.config || {};
@@ -101,6 +105,7 @@ function formatNode(node) {
   if (nodeType === 'trigger.event') return formatTrigger(config);
   if (nodeType === 'wait.timer') return formatWait(config);
   if (nodeType === 'condition.check') return `IF ${formatCondition(config)}`;
+  if (nodeType === 'split.router') return 'SPLIT into parallel paths';
   if (nodeType === 'action.send.message') return formatAction(config);
   if (nodeType === 'end.success') return 'END with success';
   if (nodeType === 'end.discard') return 'END and discard';
@@ -130,6 +135,30 @@ function walk(nodeId, nodeMap, edges, lines, indent = 0, path = new Set()) {
 
     lines.push(`${prefix}  ELSE`);
     walk(noEdge?.target, nodeMap, edges, lines, indent + 2, new Set([...path, nodeId]));
+    return;
+  }
+
+  if (nodeType === 'split.router') {
+    lines.push(`${prefix}${formatNode(node)}`);
+    const out = getOutEdges(edges, nodeId);
+    const branches = Array.isArray(node?.config?.branches) ? node.config.branches : [];
+    const labelById = new Map(
+      branches.map((branch) => [String(branch.id), branch.label || branch.id || 'Path'])
+    );
+    const conditionById = new Map(
+      branches.map((branch) => [
+        String(branch.id),
+        formatSplitBranchCondition(branch, node?.config?.schema || 'lead'),
+      ])
+    );
+
+    out.forEach((edge, idx) => {
+      const branchKey = String(edge.branch || '');
+      const label = labelById.get(branchKey) || edge.label || `Path ${idx + 1}`;
+      const conditionText = conditionById.get(branchKey) || 'condition';
+      lines.push(`${prefix}  PATH ${label} WHEN ${conditionText}`);
+      walk(edge.target, nodeMap, edges, lines, indent + 2, new Set([...path, nodeId]));
+    });
     return;
   }
 

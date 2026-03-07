@@ -9,6 +9,18 @@ async function list(_req, res, next) {
   }
 }
 
+async function getById(req, res, next) {
+  try {
+    const journey = await journeyService.getJourneyById(req.params.id);
+    if (!journey) {
+      return res.status(404).json({ message: 'Journey not found' });
+    }
+    res.json({ journey });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function create(req, res, next) {
   try {
     const journey = await journeyService.createJourney(req.body);
@@ -45,4 +57,4 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { list, create, update, publish, remove };
+module.exports = { list, getById, create, update, publish, remove };

@@ -6,6 +6,10 @@ async function listJourneys() {
   return Journey.find().sort({ createdAt: -1 });
 }
 
+async function getJourneyById(id) {
+  return Journey.findById(id);
+}
+
 async function createJourney(payload) {
   const validation = validateJourneyPayload(payload);
 
@@ -108,6 +112,7 @@ async function findRunnableJourneysByTrigger(triggerSchema, triggerEvent, option
 
 module.exports = {
   listJourneys,
+  getJourneyById,
   createJourney,
   updateJourney,
   publishJourney,

@@ -105,52 +105,7 @@ function evaluateTrigger(config, context) {
 }
 
 function evaluateCondition(config, context) {
-  const evaluateRule = (rule) => {
-    const schemaKey = rule?.schema || config?.schema || context.schema;
-    const field = rule?.field;
-    const type = rule?.ruleType || rule?.conditionType || 'exists';
-    const currentValue = resolveContextValue(context.currentEntities, schemaKey, field);
-
-    if (type === 'exists') {
-      return !isEmpty(currentValue);
-    }
-
-    if (type === 'equals') {
-      return String(currentValue ?? '') === String(rule?.value ?? '');
-    }
-
-    if (type === 'not_equals') {
-      return String(currentValue ?? '') !== String(rule?.value ?? '');
-    }
-
-    if (type === 'contains') {
-      const source = String(currentValue ?? '').toLowerCase();
-      const needle = String(rule?.value ?? '').toLowerCase();
-      return source.includes(needle);
-    }
-
-    if (type === 'not_contains') {
-      const source = String(currentValue ?? '').toLowerCase();
-      const needle = String(rule?.value ?? '').toLowerCase();
-      return !source.includes(needle);
-    }
-
-    if (type === 'changed') {
-      const previousValue = resolveContextValue(context.previousEntities, schemaKey, field);
-      const changed = String(previousValue ?? '') !== String(currentValue ?? '');
-      if (!changed) return false;
-
-      const hasFrom = rule?.from !== undefined && rule?.from !== '';
-      const hasTo = rule?.to !== undefined && rule?.to !== '';
-
-      if (hasFrom && String(previousValue ?? '') !== String(rule?.from)) return false;
-      if (hasTo && String(currentValue ?? '') !== String(rule?.to)) return false;
-
-      return true;
-    }
-
-    return false;
-  };
+  const evaluateRule = (rule) => evaluateConditionRule(rule, config, context);
 
   const evaluateGroup = (group) => {
     const items = Array.isArray(group?.items) ? group.items : [];
@@ -172,6 +127,53 @@ function evaluateCondition(config, context) {
   }
 
   return evaluateRule(config || {});
+}
+
+function evaluateConditionRule(rule, config, context) {
+  const schemaKey = rule?.schema || config?.schema || context.schema;
+  const field = rule?.field;
+  const type = rule?.ruleType || rule?.conditionType || 'exists';
+  const currentValue = resolveContextValue(context.currentEntities, schemaKey, field);
+
+  if (type === 'exists') {
+    return !isEmpty(currentValue);
+  }
+
+  if (type === 'equals') {
+    return String(currentValue ?? '') === String(rule?.value ?? '');
+  }
+
+  if (type === 'not_equals') {
+    return String(currentValue ?? '') !== String(rule?.value ?? '');
+  }
+
+  if (type === 'contains') {
+    const source = String(currentValue ?? '').toLowerCase();
+    const needle = String(rule?.value ?? '').toLowerCase();
+    return source.includes(needle);
+  }
+
+  if (type === 'not_contains') {
+    const source = String(currentValue ?? '').toLowerCase();
+    const needle = String(rule?.value ?? '').toLowerCase();
+    return !source.includes(needle);
+  }
+
+  if (type === 'changed') {
+    const previousValue = resolveContextValue(context.previousEntities, schemaKey, field);
+    const changed = String(previousValue ?? '') !== String(currentValue ?? '');
+    if (!changed) return false;
+
+    const hasFrom = rule?.from !== undefined && rule?.from !== '';
+    const hasTo = rule?.to !== undefined && rule?.to !== '';
+
+    if (hasFrom && String(previousValue ?? '') !== String(rule?.from)) return false;
+    if (hasTo && String(currentValue ?? '') !== String(rule?.to)) return false;
+
+    return true;
+  }
+
+  return false;
 }
 
 function getEntityId(current) {
@@ -231,6 +233,47 @@ async function queueNext(execution, nextNodeId, delayMs = 0) {
   });
 }
 
+async function spawnParallelExecutions({ baseExecution, nextNodeIds }) {
+  const targets = Array.isArray(nextNodeIds) ? nextNodeIds.filter(Boolean) : [];
+  if (!targets.length) return [];
+
+  const created = [];
+  for (const nodeId of targets) {
+    const child = await JourneyExecution.create({
+      journeyId: baseExecution.journeyId,
+      parentExecutionId: baseExecution._id,
+      rootExecutionId: baseExecution.rootExecutionId || baseExecution._id,
+      entitySchema: baseExecution.entitySchema,
+      entityId: baseExecution.entityId,
+      triggerEvent: baseExecution.triggerEvent,
+      status: 'queued',
+      logs: [
+        ...(baseExecution.logs || []),
+        {
+          step: 'split.router',
+          nodeId: baseExecution.currentNodeId,
+          ok: true,
+          message: `Parallel branch queued -> ${nodeId}`,
+        },
+      ],
+      contextCurrent: baseExecution.contextCurrent,
+      contextPrevious: baseExecution.contextPrevious,
+      currentNodeId: nodeId,
+      startedAt: new Date(),
+    });
+
+    await enqueueExecutionNode({
+      executionId: String(child._id),
+      nodeId,
+      delayMs: 0,
+    });
+
+    created.push(child._id);
+  }
+
+  return created;
+}
+
 async function processExecutionNode({ executionId, nodeId }) {
   const execution = await JourneyExecution.findById(executionId);
   if (!execution) return;
@@ -276,7 +319,7 @@ async function processExecutionNode({ executionId, nodeId }) {
 
   if (nodeType === 'trigger.event') {
     const pass = evaluateTrigger(config, context);
-    await appendLog(executionId, { step: nodeType, ok: pass, config });
+    await appendLog(executionId, { step: nodeType, nodeId: node.id, ok: pass, config });
     if (!pass) {
       await completeExecution(execution, 'discarded');
       return;
@@ -294,6 +337,7 @@ async function processExecutionNode({ executionId, nodeId }) {
     await execution.save();
     await appendLog(executionId, {
       step: nodeType,
+      nodeId: node.id,
       ok: true,
       mode: wait.mode,
       value: wait.value,
@@ -309,10 +353,59 @@ async function processExecutionNode({ executionId, nodeId }) {
 
   if (nodeType === 'condition.check') {
     const result = evaluateCondition(config, context);
-    await appendLog(executionId, { step: nodeType, ok: true, result, config });
+    await appendLog(executionId, { step: nodeType, nodeId: node.id, ok: true, result, config });
 
     const nextNodeId = findNextNodeId(journey.graph, node.id, result ? 'yes' : 'no');
     await queueNext(execution, nextNodeId, 0);
+    return;
+  }
+
+  if (nodeType === 'split.router') {
+    const configuredBranches = Array.isArray(config.branches) ? config.branches : [];
+    const outgoingEdges = (journey.graph?.edges || []).filter((edge) => edge.source === node.id);
+    const matchedTargets = [];
+    const branchEvaluations = [];
+
+    for (let i = 0; i < configuredBranches.length; i += 1) {
+      const branch = configuredBranches[i];
+      const pass = evaluateConditionRule(branch, { schema: config?.schema }, context);
+      branchEvaluations.push({
+        branchId: branch?.id,
+        label: branch?.label || branch?.id || `Path ${i + 1}`,
+        pass,
+      });
+      if (!pass) continue;
+
+      // Primary match by explicit branch id. Fallback to positional mapping for older/mismatched edges.
+      const edgeByBranchId = outgoingEdges.find(
+        (item) => String(item.branch || '') === String(branch.id)
+      );
+      const edgeByPosition = outgoingEdges[i];
+      const edge = edgeByBranchId || edgeByPosition;
+      if (edge?.target) matchedTargets.push(edge.target);
+    }
+
+    const uniqueTargets = [...new Set(matchedTargets)];
+    await appendLog(executionId, {
+      step: nodeType,
+      nodeId: node.id,
+      ok: true,
+      matched: uniqueTargets.length,
+      targets: uniqueTargets,
+      branches: branchEvaluations,
+    });
+
+    if (!uniqueTargets.length) {
+      await completeExecution(execution, 'discarded');
+      return;
+    }
+
+    const [primary, ...parallel] = uniqueTargets;
+    await queueNext(execution, primary, 0);
+
+    if (parallel.length) {
+      await spawnParallelExecutions({ baseExecution: execution, nextNodeIds: parallel });
+    }
     return;
   }
 
@@ -349,6 +442,7 @@ async function processExecutionNode({ executionId, nodeId }) {
     } catch (error) {
       await appendLog(executionId, {
         step: nodeType,
+        nodeId: node.id,
         ok: false,
         channel,
         reason: error.message || 'Send failed',
@@ -363,6 +457,7 @@ async function processExecutionNode({ executionId, nodeId }) {
 
     await appendLog(executionId, {
       step: nodeType,
+      nodeId: node.id,
       ok: true,
       channel,
       to: sendResult?.to || null,
@@ -379,18 +474,23 @@ async function processExecutionNode({ executionId, nodeId }) {
   }
 
   if (nodeType === 'end.discard') {
-    await appendLog(executionId, { step: nodeType, ok: true });
+    await appendLog(executionId, { step: nodeType, nodeId: node.id, ok: true });
     await completeExecution(execution, 'discarded');
     return;
   }
 
   if (nodeType === 'end.success') {
-    await appendLog(executionId, { step: nodeType, ok: true });
+    await appendLog(executionId, { step: nodeType, nodeId: node.id, ok: true });
     await completeExecution(execution, 'completed');
     return;
   }
 
-  await appendLog(executionId, { step: nodeType, ok: false, reason: 'Unsupported node type' });
+  await appendLog(executionId, {
+    step: nodeType,
+    nodeId: node.id,
+    ok: false,
+    reason: 'Unsupported node type',
+  });
   await completeExecution(execution, 'failed');
 }
 
@@ -420,6 +520,8 @@ async function enqueueJourneysForEvent({ schema, event, current, previous, optio
 
     const execution = await JourneyExecution.create({
       journeyId: journey._id,
+      parentExecutionId: null,
+      rootExecutionId: null,
       entitySchema: schema,
       entityId: getEntityId(current),
       triggerEvent: event,
@@ -430,6 +532,9 @@ async function enqueueJourneysForEvent({ schema, event, current, previous, optio
       currentNodeId: triggerNode.id,
       startedAt: new Date(),
     });
+
+    execution.rootExecutionId = execution._id;
+    await execution.save();
 
     await enqueueExecutionNode({
       executionId: String(execution._id),
@@ -448,11 +553,29 @@ async function enqueueJourneysForEvent({ schema, event, current, previous, optio
 }
 
 async function listExecutions() {
-  return JourneyExecution.find().sort({ createdAt: -1 }).limit(200);
+  return JourneyExecution.find()
+    .populate('journeyId', 'name status triggerSchema triggerEvent')
+    .sort({ createdAt: -1 })
+    .limit(200);
 }
 
 async function getExecutionById(id) {
-  return JourneyExecution.findById(id);
+  const execution = await JourneyExecution.findById(id).populate(
+    'journeyId',
+    'name status triggerSchema triggerEvent graph'
+  );
+
+  if (!execution) return null;
+
+  return execution;
+}
+
+async function listExecutionFamily(execution) {
+  if (!execution?._id) return [];
+  const rootId = execution.rootExecutionId || execution._id;
+  return JourneyExecution.find({
+    $or: [{ _id: rootId }, { rootExecutionId: rootId }],
+  }).sort({ createdAt: 1 });
 }
 
 module.exports = {
@@ -460,4 +583,5 @@ module.exports = {
   processExecutionNode,
   listExecutions,
   getExecutionById,
+  listExecutionFamily,
 };

@@ -37,13 +37,37 @@ const journeyBuilderSlice = createSlice({
       const sourceNode = state.nodes.find((node) => node.id === connection.source);
       const sourceType = sourceNode?.data?.nodeType;
       const isConditionSource = String(sourceType || '').startsWith('condition.');
-      const outgoingCount = state.edges.filter((edge) => edge.source === connection.source).length;
+      const isSplitSource = String(sourceType || '') === 'split.router';
+      const outgoingEdges = state.edges.filter((edge) => edge.source === connection.source);
 
       let branch;
       let label;
       if (isConditionSource) {
-        branch = outgoingCount === 0 ? 'yes' : outgoingCount === 1 ? 'no' : undefined;
+        // Condition node supports exactly 2 branches: YES and NO.
+        if (outgoingEdges.length >= 2) return;
+
+        const usedBranches = new Set(
+          outgoingEdges.map((edge) => String(edge.branch || edge.label || '').toLowerCase()).filter(Boolean)
+        );
+        const availableBranches = ['yes', 'no'].filter((item) => !usedBranches.has(item));
+        branch = availableBranches[0];
+
+        if (!branch) return;
         label = branch ? branch.toUpperCase() : undefined;
+      } else if (isSplitSource) {
+        const branches = Array.isArray(sourceNode?.config?.branches) ? sourceNode.config.branches : [];
+        if (!branches.length) return;
+        if (outgoingEdges.length >= branches.length) return;
+
+        const used = new Set(outgoingEdges.map((edge) => String(edge.branch || '')));
+        const available = branches.find((item) => item?.id && !used.has(String(item.id)));
+        if (!available) return;
+
+        branch = String(available.id);
+        label = String(available.label || available.id);
+      } else {
+        // All other node types support only one outgoing edge.
+        if (outgoingEdges.length >= 1) return;
       }
 
       state.edges = addEdge(
@@ -86,6 +110,22 @@ const journeyBuilderSlice = createSlice({
           },
         };
       });
+
+      if (Array.isArray(patch?.branches)) {
+        const node = state.nodes.find((item) => item.id === nodeId);
+        const isSplit = String(node?.data?.nodeType || '') === 'split.router';
+        if (isSplit) {
+          const allowedBranchIds = new Set(patch.branches.map((item) => String(item?.id || '')));
+          state.edges = state.edges.filter((edge) => {
+            if (edge.source !== nodeId) return true;
+            if (!edge.branch) return false;
+            return allowedBranchIds.has(String(edge.branch));
+          });
+          if (state.selectedEdgeId && !state.edges.find((edge) => edge.id === state.selectedEdgeId)) {
+            state.selectedEdgeId = null;
+          }
+        }
+      }
     },
     removeSelectedNode(state) {
       const nodeId = state.selectedNodeId;

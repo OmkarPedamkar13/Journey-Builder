@@ -162,7 +162,8 @@ async function getById(req, res, next) {
       return res.status(404).json({ message: 'Execution not found' });
     }
 
-    res.json({ execution });
+    const relatedExecutions = await executionService.listExecutionFamily(execution);
+    res.json({ execution, relatedExecutions });
   } catch (error) {
     next(error);
   }

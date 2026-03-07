@@ -4,6 +4,7 @@ const ALLOWED_NODE_TYPES = [
   'trigger.event',
   'wait.timer',
   'condition.check',
+  'split.router',
   'condition.field.exists',
   'condition.field.equals',
   'condition.field.changed',
@@ -27,7 +28,7 @@ const edgeSchema = z
     id: z.string().min(1),
     source: z.string().min(1),
     target: z.string().min(1),
-    branch: z.enum(['yes', 'no']).optional(),
+    branch: z.string().optional(),
     label: z.string().optional(),
   })
   .passthrough();

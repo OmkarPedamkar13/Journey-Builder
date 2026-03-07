@@ -9,6 +9,10 @@ export const journeyApi = createApi({
       query: () => '/journeys',
       providesTags: ['Journey'],
     }),
+    getJourneyById: builder.query({
+      query: (id) => `/journeys/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Journey', id }],
+    }),
     createJourney: builder.mutation({
       query: (payload) => ({
         url: '/journeys',
@@ -83,11 +87,20 @@ export const journeyApi = createApi({
       }),
       invalidatesTags: ['Execution'],
     }),
+    getExecutions: builder.query({
+      query: () => '/executions',
+      providesTags: ['Execution'],
+    }),
+    getExecutionById: builder.query({
+      query: (id) => `/executions/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Execution', id }],
+    }),
   }),
 });
 
 export const {
   useGetJourneysQuery,
+  useGetJourneyByIdQuery,
   useCreateJourneyMutation,
   useUpdateJourneyMutation,
   useDeleteJourneyMutation,
@@ -100,4 +113,6 @@ export const {
   useGetSchemaContextFieldsQuery,
   useTriggerJourneyEventMutation,
   usePublishJourneyMutation,
+  useGetExecutionsQuery,
+  useGetExecutionByIdQuery,
 } = journeyApi;

@@ -8,6 +8,18 @@ const journeyExecutionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    parentExecutionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'JourneyExecution',
+      default: null,
+      index: true,
+    },
+    rootExecutionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'JourneyExecution',
+      default: null,
+      index: true,
+    },
     entitySchema: { type: String, required: true, index: true },
     entityId: { type: String, required: true, index: true },
     triggerEvent: { type: String, required: true },

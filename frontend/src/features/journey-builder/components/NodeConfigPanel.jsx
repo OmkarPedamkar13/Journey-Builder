@@ -27,6 +27,14 @@ const waitUnitOptions = [
   { label: 'Months', value: 'months' },
   { label: 'Years', value: 'years' },
 ];
+const conditionRuleTypeOptions = [
+  { label: 'Exists', value: 'exists' },
+  { label: 'Field Equals', value: 'equals' },
+  { label: 'Field Contains', value: 'contains' },
+  { label: 'Field Not Equal To', value: 'not_equals' },
+  { label: 'Field Not Contain', value: 'not_contains' },
+  { label: 'Field Changed', value: 'changed' },
+];
 
 function stripHtml(html) {
   return String(html || '').replace(/<[^>]*>/g, ' ');
@@ -95,6 +103,24 @@ function removeItemById(group, itemId) {
   return { ...group, items: nextItems };
 }
 
+function createSplitBranch(index = 1) {
+  return {
+    id: uid(`split_branch_${index}`),
+    label: `Path ${index}`,
+    ruleType: 'exists',
+    field: '',
+    value: '',
+    from: '',
+    to: '',
+  };
+}
+
+function normalizeSplitBranches(config) {
+  const raw = Array.isArray(config?.branches) ? config.branches : [];
+  if (raw.length) return raw;
+  return [createSplitBranch(1), createSplitBranch(2)];
+}
+
 export default function NodeConfigPanel() {
   const dispatch = useDispatch();
   const { nodes, selectedNodeId } = useSelector((state) => state.journeyBuilder);
@@ -123,6 +149,7 @@ export default function NodeConfigPanel() {
     value: field.key,
   }));
   const conditionGroup = normalizeConditionGroup(config);
+  const splitBranches = normalizeSplitBranches(config);
 
   if (!node) {
     return <Card title="Node Config">Select a node</Card>;
@@ -165,14 +192,7 @@ export default function NodeConfigPanel() {
           <Select
             style={{ width: 140 }}
             value={rule.ruleType || 'exists'}
-            options={[
-              { label: 'Exists', value: 'exists' },
-              { label: 'Field Equals', value: 'equals' },
-              { label: 'Field Contains', value: 'contains' },
-              { label: 'Field Not Equal To', value: 'not_equals' },
-              { label: 'Field Not Contain', value: 'not_contains' },
-              { label: 'Field Changed', value: 'changed' },
-            ]}
+            options={conditionRuleTypeOptions}
             onChange={(value) => {
               const next = updateRuleById(conditionGroup, rule.id, (item) => ({
                 ...item,
@@ -444,6 +464,138 @@ export default function NodeConfigPanel() {
             </div>
 
             {renderConditionGroup(conditionGroup, true)}
+          </>
+        ) : null}
+
+        {nodeType === NODE_TYPES.SPLIT_ROUTER ? (
+          <>
+            <div>
+              <Typography.Text type="secondary">Schema</Typography.Text>
+              <Select
+                style={{ width: '100%' }}
+                value={schemaKey}
+                options={schemaOptions}
+                onChange={(value) => patch({ schema: value })}
+              />
+            </div>
+
+            <Card size="small" title="Split Branches">
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                {splitBranches.map((branch, index) => (
+                  <Card
+                    key={branch.id}
+                    size="small"
+                    style={{ border: '1px solid #e4e6eb' }}
+                    title={`Branch ${index + 1}`}
+                    extra={
+                      <Button
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        disabled={splitBranches.length <= 1}
+                        onClick={() => {
+                          patch({
+                            branches: splitBranches.filter((item) => item.id !== branch.id),
+                          });
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    }
+                  >
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Input
+                        value={branch.label || ''}
+                        placeholder="Branch label"
+                        onChange={(e) => {
+                          patch({
+                            branches: splitBranches.map((item) =>
+                              item.id === branch.id ? { ...item, label: e.target.value } : item
+                            ),
+                          });
+                        }}
+                      />
+
+                      <Select
+                        style={{ width: '100%' }}
+                        value={branch.ruleType || 'exists'}
+                        options={conditionRuleTypeOptions}
+                        onChange={(value) => {
+                          patch({
+                            branches: splitBranches.map((item) =>
+                              item.id === branch.id ? { ...item, ruleType: value } : item
+                            ),
+                          });
+                        }}
+                      />
+
+                      <Select
+                        style={{ width: '100%' }}
+                        value={branch.field || undefined}
+                        options={fieldOptions}
+                        placeholder="Select field"
+                        onChange={(value) => {
+                          patch({
+                            branches: splitBranches.map((item) =>
+                              item.id === branch.id ? { ...item, field: value } : item
+                            ),
+                          });
+                        }}
+                      />
+
+                      {['equals', 'contains', 'not_equals', 'not_contains'].includes(branch.ruleType || 'exists') ? (
+                        <Input
+                          value={branch.value || ''}
+                          placeholder={(branch.ruleType || 'exists') === 'not_contains' ? 'Value to exclude' : 'Expected value'}
+                          onChange={(e) => {
+                            patch({
+                              branches: splitBranches.map((item) =>
+                                item.id === branch.id ? { ...item, value: e.target.value } : item
+                              ),
+                            });
+                          }}
+                        />
+                      ) : null}
+
+                      {(branch.ruleType || 'exists') === 'changed' ? (
+                        <Space wrap style={{ width: '100%' }}>
+                          <Input
+                            value={branch.from || ''}
+                            placeholder="From value (optional)"
+                            onChange={(e) => {
+                              patch({
+                                branches: splitBranches.map((item) =>
+                                  item.id === branch.id ? { ...item, from: e.target.value } : item
+                                ),
+                              });
+                            }}
+                          />
+                          <Input
+                            value={branch.to || ''}
+                            placeholder="To value (optional)"
+                            onChange={(e) => {
+                              patch({
+                                branches: splitBranches.map((item) =>
+                                  item.id === branch.id ? { ...item, to: e.target.value } : item
+                                ),
+                              });
+                            }}
+                          />
+                        </Space>
+                      ) : null}
+                    </Space>
+                  </Card>
+                ))}
+
+                <Button
+                  size="small"
+                  icon={<PlusCircleOutlined />}
+                  onClick={() => patch({ branches: [...splitBranches, createSplitBranch(splitBranches.length + 1)] })}
+                >
+                  Add Branch
+                </Button>
+              </Space>
+            </Card>
           </>
         ) : null}
 

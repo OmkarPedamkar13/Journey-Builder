@@ -1,5 +1,5 @@
 import { Button, Card, Col, Input, Row, Space, Typography, message } from 'antd';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   ArrowLeftOutlined,
@@ -14,18 +14,19 @@ import NodeConfigPanel from '../components/NodeConfigPanel';
 import NodePalette from '../components/NodePalette';
 import {
   createNewJourney,
+  loadJourneyGraph,
   removeSelectedEdge,
   removeSelectedNode,
   resetJourneyGraph,
   setCurrentJourneyId,
   setJourneyName,
 } from '../slice/journeyBuilderSlice';
-import { useCreateJourneyMutation, useUpdateJourneyMutation } from '../api/journeyApi';
+import { useCreateJourneyMutation, useGetJourneyByIdQuery, useUpdateJourneyMutation } from '../api/journeyApi';
 import { validateJourneyGraph } from '../utils/graphValidation';
 import { extractTriggerEvent, extractTriggerSchema } from '../utils/workflow';
 import { buildJourneyPseudoCode } from '../utils/journeySummary';
 
-export default function JourneyCreatePage({ onBack }) {
+export default function JourneyCreatePage({ onBack, journeyId = null }) {
   const dispatch = useDispatch();
   const { currentJourneyId, name, nodes, edges, selectedNodeId, selectedEdgeId } = useSelector(
     (state) => state.journeyBuilder
@@ -33,7 +34,22 @@ export default function JourneyCreatePage({ onBack }) {
 
   const [createJourney, { isLoading }] = useCreateJourneyMutation();
   const [updateJourney, { isLoading: isUpdating }] = useUpdateJourneyMutation();
+  const { data: journeyByIdData, isFetching: isFetchingJourney } = useGetJourneyByIdQuery(journeyId, {
+    skip: !journeyId,
+  });
   const journeySummary = useMemo(() => buildJourneyPseudoCode(nodes, edges), [nodes, edges]);
+
+  useEffect(() => {
+    if (journeyId && journeyByIdData?.journey) {
+      dispatch(loadJourneyGraph(journeyByIdData.journey));
+    }
+  }, [dispatch, journeyId, journeyByIdData]);
+
+  useEffect(() => {
+    if (!journeyId) {
+      dispatch(createNewJourney());
+    }
+  }, [dispatch, journeyId]);
 
   const handleSaveJourney = async () => {
     const validation = validateJourneyGraph(nodes, edges);
@@ -66,7 +82,7 @@ export default function JourneyCreatePage({ onBack }) {
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24}>
-        <Card>
+        <Card loading={Boolean(journeyId) && isFetchingJourney}>
           <Space wrap>
             <Button icon={<ArrowLeftOutlined />} onClick={onBack}>
               Back to Journey List
