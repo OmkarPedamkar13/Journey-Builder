@@ -116,36 +116,6 @@ async function externalContract(_req, res) {
   });
 }
 
-async function triggerLeadCreated(req, res, next) {
-  try {
-    const result = await executionService.enqueueJourneysForEvent({
-      schema: 'lead',
-      event: 'created',
-      current: req.body.lead,
-      previous: null,
-      options: { includeDraft: Boolean(req.body.includeDraft) },
-    });
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-async function triggerLeadUpdated(req, res, next) {
-  try {
-    const result = await executionService.enqueueJourneysForEvent({
-      schema: 'lead',
-      event: 'updated',
-      current: req.body.lead,
-      previous: req.body.previousLead,
-      options: { includeDraft: Boolean(req.body.includeDraft) },
-    });
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
 async function list(req, res, next) {
   try {
     const executions = await executionService.listExecutions();
@@ -173,8 +143,6 @@ module.exports = {
   trigger,
   triggerExternal,
   externalContract,
-  triggerLeadCreated,
-  triggerLeadUpdated,
   list,
   getById,
 };
