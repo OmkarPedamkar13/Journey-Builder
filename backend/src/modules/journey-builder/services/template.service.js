@@ -1,11 +1,11 @@
 const Template = require('../models/Template');
 
 async function listTemplates() {
-  return Template.find().sort({ createdAt: -1 });
+  return Template.find({ softDeleted: { $ne: true } }).sort({ createdAt: -1 });
 }
 
 async function getTemplateById(id) {
-  return Template.findById(id);
+  return Template.findOne({ _id: id, softDeleted: { $ne: true } });
 }
 
 async function createTemplate(payload) {
@@ -23,7 +23,7 @@ async function createTemplate(payload) {
 }
 
 async function updateTemplate(id, payload) {
-  const template = await Template.findById(id);
+  const template = await Template.findOne({ _id: id, softDeleted: { $ne: true } });
   if (!template) {
     const error = new Error('Template not found');
     error.status = 404;
@@ -43,14 +43,16 @@ async function updateTemplate(id, payload) {
 }
 
 async function deleteTemplate(id) {
-  const template = await Template.findById(id);
+  const template = await Template.findOne({ _id: id, softDeleted: { $ne: true } });
   if (!template) {
     const error = new Error('Template not found');
     error.status = 404;
     throw error;
   }
 
-  await Template.deleteOne({ _id: template._id });
+  template.softDeleted = true;
+  template.softDeletedAt = new Date();
+  await template.save();
   return { deleted: true, id };
 }
 

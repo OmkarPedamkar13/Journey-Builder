@@ -25,6 +25,8 @@ const templateSchema = new mongoose.Schema(
       default: 'html',
     },
     body: { type: String, required: true },
+    softDeleted: { type: Boolean, default: false },
+    softDeletedAt: { type: Date, default: null },
   },
   {
     timestamps: true,

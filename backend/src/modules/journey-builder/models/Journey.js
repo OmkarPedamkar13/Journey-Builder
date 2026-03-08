@@ -13,6 +13,8 @@ const journeySchema = new mongoose.Schema(
       settings: { type: mongoose.Schema.Types.Mixed, required: true },
     },
     lastPublishedAt: { type: Date },
+    softDeleted: { type: Boolean, default: false },
+    softDeletedAt: { type: Date, default: null },
   },
   {
     timestamps: true,

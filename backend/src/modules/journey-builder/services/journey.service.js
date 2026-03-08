@@ -1,13 +1,12 @@
 const Journey = require('../models/Journey');
-const JourneyExecution = require('../models/JourneyExecution');
 const { validateJourneyPayload } = require('../validators/journey.validator');
 
 async function listJourneys() {
-  return Journey.find().sort({ createdAt: -1 });
+  return Journey.find({ softDeleted: { $ne: true } }).sort({ createdAt: -1 });
 }
 
 async function getJourneyById(id) {
-  return Journey.findById(id);
+  return Journey.findOne({ _id: id, softDeleted: { $ne: true } });
 }
 
 async function createJourney(payload) {
@@ -41,7 +40,7 @@ async function updateJourney(id, payload) {
     throw error;
   }
 
-  const journey = await Journey.findById(id);
+  const journey = await Journey.findOne({ _id: id, softDeleted: { $ne: true } });
   if (!journey) {
     const error = new Error('Journey not found');
     error.status = 404;
@@ -59,7 +58,7 @@ async function updateJourney(id, payload) {
 }
 
 async function publishJourney(id) {
-  const journey = await Journey.findById(id);
+  const journey = await Journey.findOne({ _id: id, softDeleted: { $ne: true } });
   if (!journey) {
     const error = new Error('Journey not found');
     error.status = 404;
@@ -75,15 +74,16 @@ async function publishJourney(id) {
 }
 
 async function deleteJourney(id) {
-  const journey = await Journey.findById(id);
+  const journey = await Journey.findOne({ _id: id, softDeleted: { $ne: true } });
   if (!journey) {
     const error = new Error('Journey not found');
     error.status = 404;
     throw error;
   }
 
-  await JourneyExecution.deleteMany({ journeyId: journey._id });
-  await Journey.deleteOne({ _id: journey._id });
+  journey.softDeleted = true;
+  journey.softDeletedAt = new Date();
+  await journey.save();
 
   return { deleted: true, id };
 }
@@ -91,6 +91,7 @@ async function deleteJourney(id) {
 async function findPublishedJourneysByTrigger(triggerSchema, triggerEvent) {
   return Journey.find({
     status: 'published',
+    softDeleted: { $ne: true },
     $or: [
       { triggerSchema, triggerEvent },
       { triggerEvent: `${triggerSchema}.${triggerEvent}` },
@@ -103,6 +104,7 @@ async function findRunnableJourneysByTrigger(triggerSchema, triggerEvent, option
   const statuses = includeDraft ? ['published', 'draft'] : ['published'];
   return Journey.find({
     status: { $in: statuses },
+    softDeleted: { $ne: true },
     $or: [
       { triggerSchema, triggerEvent },
       { triggerEvent: `${triggerSchema}.${triggerEvent}` },
