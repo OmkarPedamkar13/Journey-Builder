@@ -10,7 +10,7 @@ const journeySchema = new mongoose.Schema(
     graph: {
       nodes: { type: [mongoose.Schema.Types.Mixed], required: true, default: [] },
       edges: { type: [mongoose.Schema.Types.Mixed], required: true, default: [] },
-      settings: { type: mongoose.Schema.Types.Mixed, required: true },
+      settings: { type: mongoose.Schema.Types.Mixed, default: {} },
     },
     lastPublishedAt: { type: Date },
     softDeleted: { type: Boolean, default: false },
